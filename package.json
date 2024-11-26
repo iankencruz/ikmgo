@@ -1,9 +1,0 @@
-{
-  "devDependencies": {
-    "@tailwindcss/forms": "^0.5.9",
-    "tailwindcss": "^3.4.11"
-  },
-  "dependencies": {
-    "pagedone": "^1.2.2"
-  }
-}

@@ -1,13 +1,13 @@
 ## build: Build the application
 .PHONY: build
 build: compile
-	@go build -o ./tmp/main ./cmd/web/
+	@go build -o ./tmp/main ./cmd/api/
 
 
 .PHONY: compile
 compile:
 	@echo -n '** Generating tailwind.css file | '
-	@npx tailwindcss -i ./ui/static/css/input.css -o ./ui/static/css/tailwind.css --minify
+	@npx @tailwindcss/cli -i ./ui/static/css/input.css -o ./ui/static/css/tailwind.css 
 
 ## run: Run the binary
 .PHONY: run

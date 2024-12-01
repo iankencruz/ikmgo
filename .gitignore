@@ -4,8 +4,7 @@ bin/
 tmp
 tmp/*
 
-# tailwind executable - os specific
-tailwindcss
+
 
 # environment variables
 .env

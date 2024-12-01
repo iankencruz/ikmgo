@@ -28,7 +28,7 @@ func (app *application) routes(h *handlers.Handlers) http.Handler {
 	// router.Post("/galleries", h.CreateGalleryHandler)
 	// router.Post("/media/upload", h.UploadMediaHandler)
 
-	// router.Get("/about", h.AboutPageHandler)
+	router.Get("/about", h.AboutPageHandler)
 
 	return router
 }

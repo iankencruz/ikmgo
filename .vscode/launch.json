@@ -6,7 +6,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/cmd/api/main.go",
+      "program": "${workspaceFolder}/cmd/api/${fileBasename}",
       "trace": "verbose" // Add this line for detailed logs
     }
   ]

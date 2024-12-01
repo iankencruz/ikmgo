@@ -521,9 +521,6 @@
   }
 }
 @layer utilities {
-  .block {
-    display: block;
-  }
   .contents {
     display: contents;
   }

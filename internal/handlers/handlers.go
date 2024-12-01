@@ -29,7 +29,7 @@ func New(logger *log.Logger, templateCache map[string]*template.Template, db *pg
 	}
 }
 
-// Render method for rendering templates
+// / Render method for rendering templates
 func (h *Handlers) Render(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
 	// Append .html suffix to the template name
 	templateName := name + ".html"
@@ -42,7 +42,8 @@ func (h *Handlers) Render(w http.ResponseWriter, r *http.Request, name string, d
 	}
 
 	buf := new(bytes.Buffer)
-	err := ts.Execute(buf, data)
+	// ExecuteTemplate specifying the "base" or "main" template
+	err := ts.ExecuteTemplate(buf, "base", data)
 	if err != nil {
 		h.logger.Printf("Unable to render template: %v", err)
 		http.Error(w, "Unable to render template", http.StatusInternalServerError)

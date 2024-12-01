@@ -9,13 +9,8 @@ import (
 // HomePageHandler handles requests for the homepage
 // HomePageHandler handles the homepage requests
 func (h *Handlers) HomePageHandler(w http.ResponseWriter, r *http.Request) {
-	data := struct {
-		Title          string
-		WelcomeMessage string
-	}{
-		Title:          "Home",
-		WelcomeMessage: "Welcome to the home page!",
-	}
+	data := vw.NewHomepageData(r, "Welcome to the Image Gallery")
+	data.CurrentPath = r.URL.Path
 	h.Render(w, r, "home", data)
 }
 

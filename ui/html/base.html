@@ -1,21 +1,20 @@
 {{define "base"}}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{.Title}}</title>
-</head>
-<body>
+    <link href="../static/css/tailwind.css" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen flex flex-col">
     <header>
-        <h1>My Website</h1>
+      <div id="nav-container">{{ template "nav" .}}</div>
     </header>
-    <main>
-        {{template "main" .}}
-    </main>
-    <footer>
-        <p>Footer content here</p>
+    <main>{{template "main" .}}</main>
+    <footer class="mt-auto">
+      <div id="footer-container">{{ template "footer" .}}</div>
     </footer>
-</body>
+  </body>
 </html>
 {{end}}

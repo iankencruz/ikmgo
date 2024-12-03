@@ -13,10 +13,10 @@ func (app *application) routes(h *handlers.Handlers) http.Handler {
 	router := chi.NewRouter()
 
 	// Middleware
-	// router.Use(middleware.RequestID)
-	// router.Use(middleware.RealIP)
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
 	router.Use(middleware.Logger)
-	// router.Use(middleware.Recoverer)
+	router.Use(middleware.Recoverer)
 
 	fileServer := http.FileServer(http.Dir("./ui/static"))
 	router.Handle("/static/*", http.StripPrefix("/static/", fileServer))
@@ -25,7 +25,11 @@ func (app *application) routes(h *handlers.Handlers) http.Handler {
 	router.Get("/", h.HomePageHandler)
 	// router.Get("/healthcheck", h.HealthCheck)
 
-	// router.Post("/galleries", h.CreateGalleryHandler)
+	router.Group(func(r chi.Router) {
+		r.Get("/galleries", h.ListGalleriesHandler)
+		// Add more gallery-related routes here
+	})
+
 	// router.Post("/media/upload", h.UploadMediaHandler)
 
 	router.Get("/about", h.AboutPageHandler)

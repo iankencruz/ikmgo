@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"ikm/internal/models"
 	"log"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -29,8 +31,12 @@ func New(logger *log.Logger, templateCache map[string]*template.Template, db *pg
 	}
 }
 
-// / Render method for rendering templates
-func (h *Handlers) Render(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
+// isHTMX is a helper function to check if the request is an HTMX request
+func isHTMX(r *http.Request) bool {
+	return r.Header.Get("HX-Request") != ""
+}
+
+func (h *Handlers) Render(w http.ResponseWriter, r *http.Request, name string, data interface{}, options ...func(*template.Template, *bytes.Buffer) error) {
 	// Append .html suffix to the template name
 	templateName := name + ".html"
 
@@ -42,14 +48,42 @@ func (h *Handlers) Render(w http.ResponseWriter, r *http.Request, name string, d
 	}
 
 	buf := new(bytes.Buffer)
-	// ExecuteTemplate specifying the "base" or "main" template
-	err := ts.ExecuteTemplate(buf, "base", data)
-	if err != nil {
-		h.logger.Printf("Unable to render template: %v", err)
-		http.Error(w, "Unable to render template", http.StatusInternalServerError)
-		return
+
+	// Use the isHTMX helper function to determine if the request is an HTMX request
+	if isHTMX(r) {
+		// Render only the specified template (usually a partial)
+		err := ts.ExecuteTemplate(buf, name, data)
+		if err != nil {
+			h.logger.Printf("Unable to render HTMX template: %v", err)
+			http.Error(w, "Unable to render HTMX template", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Render the full page using the base layout
+		err := ts.ExecuteTemplate(buf, "base", data)
+		if err != nil {
+			h.logger.Printf("Unable to render template: %v", err)
+			http.Error(w, "Unable to render template", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Apply any additional options (for custom behavior)
+	for _, option := range options {
+		if err := option(ts, buf); err != nil {
+			h.logger.Printf("Error applying custom render option: %v", err)
+			http.Error(w, "Unable to render template", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
 	buf.WriteTo(w)
+}
+
+// Helpers for error handling
+func (h *Handlers) serverError(w http.ResponseWriter, err error) {
+	trace := fmt.Sprintf("%s\n%s", err.Error(), debug.Stack())
+	h.logger.Output(2, trace)
+	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }

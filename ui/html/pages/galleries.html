@@ -1,0 +1,18 @@
+{{define "main"}}
+<h2>Gallery</h2>
+{{if .Data.Galleries}}
+<ul>
+  {{range .Data.Galleries}}
+  <li>
+    <a href="/galleries/{{.Slug}}">{{.Title}}</a>
+    <p>{{ .Description }}</p>
+    <img src="{{ .CoverImage }}" />
+    <p>{{ .CreatedAt }}</p>
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p>No galleries found</p>
+{{end}}
+<!---->
+{{end}}

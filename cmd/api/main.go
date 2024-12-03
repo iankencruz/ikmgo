@@ -31,10 +31,14 @@ type application struct {
 func main() {
 	ctx := context.Background()
 
-	// Load environment variables from the .env file
-	err := godotenv.Load("./config/.env")
+	curDir, err := os.Getwd()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println(err)
+	}
+	// Load environment variables from the .env file
+	err = godotenv.Load(curDir + "/.env")
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
 	}
 
 	// Initialize logger

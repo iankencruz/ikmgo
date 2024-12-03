@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -14,39 +13,47 @@ func humanDate(t time.Time) string {
 	return t.Format("02 Jan 2006 at 15:04")
 }
 
-// Check if the given path is active
-func isActive(currentPath, basePath string) bool {
-	return strings.HasPrefix(currentPath, basePath)
-}
-
 // Define a FuncMap to hold the functions that will be available in the templates
 var functions = template.FuncMap{
 	"humanDate": humanDate,
-	"isActive":  isActive,
 }
 
+// NewTemplateCache creates a cache for all the templates
 func NewTemplateCache() (map[string]*template.Template, error) {
 	cache := map[string]*template.Template{}
 
-	pages, err := filepath.Glob("./ui/html/pages/*.html")
-	if err != nil {
-		return nil, err
+	// Collect templates from pages, HTMX OOB, and partials directories
+	templateDirs := []string{
+		"./ui/html/pages/*.html",
+		"./ui/html/htmx/*.html",
 	}
 
-	for _, page := range pages {
-		name := filepath.Base(page)
-
-		// Use the global FuncMap when creating the template
-		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/base.html", page)
+	var templates []string
+	for _, dir := range templateDirs {
+		files, err := filepath.Glob(dir)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to collect templates from %s: %w", dir, err)
+		}
+		templates = append(templates, files...)
+	}
+
+	// Iterate through all templates and add them to the cache
+	for _, tmpl := range templates {
+		name := filepath.Base(tmpl)
+
+		// Parse base layout, the current template, and partials
+		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/base.html", tmpl)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse base and current template %s: %w", name, err)
 		}
 
+		// Parse partial templates
 		ts, err = ts.ParseGlob("./ui/html/partials/*.html")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to parse partials for template %s: %w", name, err)
 		}
 
+		// Add template to cache
 		cache[name] = ts
 		fmt.Printf("Added template %s to cache\n", name)
 	}

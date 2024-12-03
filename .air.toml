@@ -10,10 +10,10 @@ tmp_dir = "tmp"
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules"]
   exclude_file = []
   exclude_regex = ["_test.go", ".*_templ.go"]
-  exclude_unchanged = false
+  exclude_unchanged = true
   follow_symlink = false
   full_bin = ""
-  include_dir = []
+  include_dir = [".", "cmd", "internal", "ui"]
   include_ext = ["go", "tpl", "tmpl", "templ", "html"]
   include_file = []
   kill_delay = "0s"
@@ -36,7 +36,7 @@ tmp_dir = "tmp"
 
 [log]
   main_only = false
-  time = false
+  time = true
 
 [misc]
   clean_on_exit = true
@@ -48,4 +48,4 @@ tmp_dir = "tmp"
 
 [screen]
   clear_on_rebuild = true
-  keep_scroll = true
+  keep_scroll = false

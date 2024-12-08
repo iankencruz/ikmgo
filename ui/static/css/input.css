@@ -1,11 +1,14 @@
 @import "tailwindcss";
 
-
-
-
+@layer base {
+  *,
+  body {
+    @apply text-white;
+  }
+}
 
 @layer utilities {
   .active {
-    @apply border-indigo-500 text-gray-900;
+    @apply border-indigo-500 text-gray-200;
   }
 }

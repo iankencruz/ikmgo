@@ -1,0 +1,84 @@
+{{define "main"}}
+<div class="bg-gray-900 py-8">
+  <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+    <div class="md:flex md:items-center md:justify-between">
+      <div class="min-w-0 flex-1">
+        <h2
+          class="text-2xl/7 font-bold text-white sm:truncate sm:text-3xl sm:tracking-tight"
+        >
+          Galleries
+        </h2>
+      </div>
+      <div class="mt-4 flex md:mt-0 md:ml-4">
+        <button
+          type="button"
+          class="inline-flex items-center rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-white/20"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          class="ml-3 inline-flex items-center rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+        >
+          Publish
+        </button>
+      </div>
+    </div>
+
+    <div>
+      {{if .Data.Galleries}}
+      <ul>
+        {{range .Data.Galleries}}
+        <li class="py-4">
+          <div
+            class="gallery-block relative rounded-xl w-full max-h-[32rem] h-full bg-gray-700"
+          >
+            <div class="img-placeholder animate-pulse w-full h-full"></div>
+            <img
+              src="{{ .CoverImage }}"
+              alt="Gallery cover"
+              width="1280"
+              height="550"
+              class="gallery-image rounded-xl w-full object-cover max-h-[32rem] h-full hidden"
+              onload="imageLoaded(this)"
+            />
+            <div
+              class="flex items-center absolute bottom-0 gap-3 md:gap-24 w-full p-4 md:p-8"
+            >
+              <a
+                href="/galleries/{{ .Slug }}"
+                class="w-full cursor-pointer text-white flex-col flex space-x-4 h-16 rounded-full"
+              >
+                <h4
+                  class="font-manrope text-white text-xl md:text-3xl font-semibold md:leading-[3rem] flex-1"
+                >
+                  {{ .Title }}
+                </h4>
+                <p>{{ .Description }}</p>
+              </a>
+            </div>
+          </div>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p>No galleries found</p>
+      {{end}}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Function that handles when an image is fully loaded
+  function imageLoaded(imgElement) {
+    // Remove the loading placeholder
+    const placeholder = imgElement.previousElementSibling;
+    if (placeholder) {
+      placeholder.remove();
+    }
+
+    // Make the image visible
+    imgElement.classList.remove("hidden");
+  }
+</script>
+{{end}}

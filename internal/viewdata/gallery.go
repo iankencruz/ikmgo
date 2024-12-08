@@ -1,7 +1,11 @@
 // internal/viewdata/gallery.go
 package viewdata
 
-import "net/http"
+import (
+	"ikm/internal/models"
+	"ikm/internal/session"
+	"net/http"
+)
 
 type GalleryPageData struct {
 	TemplateData // Embedding the generic TemplateData struct
@@ -10,8 +14,8 @@ type GalleryPageData struct {
 	Images       []string
 }
 
-func NewGalleryPageData(r *http.Request, title, description string) GalleryPageData {
-	templateData := NewTemplateData()
+func NewGalleryPageData(r *http.Request, session *session.Manager, userModel *models.UserModel, title, description string) GalleryPageData {
+	templateData := NewTemplateData(r, session, userModel)
 
 	return GalleryPageData{
 		TemplateData: templateData,

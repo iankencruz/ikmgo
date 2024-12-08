@@ -6,6 +6,7 @@ import (
 	"ikm/internal/handlers"
 	"ikm/internal/models"
 	"ikm/internal/render"
+	"ikm/internal/session"
 	"log"
 	"net/http"
 	"os"
@@ -13,19 +14,21 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	awsSession "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
 type application struct {
-	logger        *log.Logger
-	templateCache map[string]*template.Template
-	db            *pgxpool.Pool
-	s3Client      *s3.S3
-	galleryModel  *models.GalleryModel
-	mediaModel    *models.MediaModel
+	logger         *log.Logger
+	templateCache  map[string]*template.Template
+	db             *pgxpool.Pool
+	s3Client       *s3.S3
+	galleryModel   *models.GalleryModel
+	mediaModel     *models.MediaModel
+	userModel      *models.UserModel
+	sessionManager *session.Manager
 }
 
 func main() {
@@ -74,22 +77,29 @@ func main() {
 	// Initialize gallery model
 	galleryModel := models.NewGalleryModel(db)
 
+	// Initilize user model
+	userModel := &models.UserModel{DB: db}
+
+	sessionManager := session.NewManager()
+
 	// Initialize application
 	app := &application{
-		logger:        logger,
-		templateCache: templateCache,
-		db:            db,
-		s3Client:      s3Client,
-		mediaModel:    mediaModel,
-		galleryModel:  galleryModel,
+		logger:         logger,
+		templateCache:  templateCache,
+		db:             db,
+		s3Client:       s3Client,
+		mediaModel:     mediaModel,
+		galleryModel:   galleryModel,
+		userModel:      userModel,
+		sessionManager: sessionManager,
 	}
 
 	// Create handlers instance
-	handlers := handlers.New(app.logger, app.templateCache, app.db, app.galleryModel, app.mediaModel)
+	handlers := handlers.New(app.logger, app.templateCache, app.db, app.galleryModel, app.mediaModel, app.userModel, sessionManager)
 
 	srv := &http.Server{
 		Addr:         ":8080",
-		Handler:      app.routes(handlers),
+		Handler:      mainRouter(handlers, sessionManager),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -130,7 +140,7 @@ func openDB(ctx context.Context) (*pgxpool.Pool, error) {
 }
 
 func initS3Client() (*s3.S3, error) {
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := awsSession.NewSession(&aws.Config{
 		Region:      aws.String(os.Getenv("S3_REGION")),
 		Credentials: credentials.NewStaticCredentials(os.Getenv("S3_ACCESS_KEY"), os.Getenv("S3_SECRET_KEY"), ""),
 		Endpoint:    aws.String(os.Getenv("S3_ENDPOINT")),

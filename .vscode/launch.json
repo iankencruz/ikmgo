@@ -5,20 +5,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Attach to process",
-      "type": "go",
-      "request": "attach",
-      "mode": "remote",
-      "port": 8080,
-      "host": "127.0.0.1"
-    },
-    {
       "name": "Launch Package",
       "type": "go",
-      "request": "attach",
+      "request": "launch",
       "mode": "debug",
-      "program": "${workspaceFolder}/cmd/api/",
-      "args": [],
+      "program": "${workspaceFolder}/cmd/api",
       "envFile": "${workspaceFolder}/.env",
       "cwd": "${workspaceFolder}"
     }

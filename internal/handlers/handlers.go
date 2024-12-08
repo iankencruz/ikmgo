@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"html/template"
 	"ikm/internal/models"
+	"ikm/internal/session"
 	"log"
 	"net/http"
 	"runtime/debug"
 
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -18,16 +20,21 @@ type Handlers struct {
 	db            *pgxpool.Pool
 	Gallery       *models.GalleryModel
 	Media         *models.MediaModel
+	User          *models.UserModel
+	S3Uploader    *s3manager.Uploader
+	session       *session.Manager
 }
 
 // New creates a new Handlers instance
-func New(logger *log.Logger, templateCache map[string]*template.Template, db *pgxpool.Pool, galleryModel *models.GalleryModel, mediaModel *models.MediaModel) *Handlers {
+func New(logger *log.Logger, templateCache map[string]*template.Template, db *pgxpool.Pool, galleryModel *models.GalleryModel, mediaModel *models.MediaModel, userModel *models.UserModel, sessionManager *session.Manager) *Handlers {
 	return &Handlers{
 		logger:        logger,
 		templateCache: templateCache,
 		db:            db,
 		Gallery:       galleryModel,
 		Media:         mediaModel,
+		User:          userModel,
+		session:       sessionManager,
 	}
 }
 

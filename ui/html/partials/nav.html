@@ -79,7 +79,9 @@
         class="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0"
       >
         {{ if .IsAuthenticated }}
-        <p>Welcome, {{.UserName}}!</p>
+        <!--prettier-ignore-->
+        {{if .User}} Welcome, {{.User.FirstName}}
+        {{.User.LastName}}! {{else}} Welcome, Guest! {{end}}
         <!-- Profile dropdown -->
         <div class="relative ml-3">
           <div>
@@ -92,11 +94,7 @@
             >
               <span class="absolute -inset-1.5"></span>
               <span class="sr-only">Open user menu</span>
-              <img
-                class="size-8 rounded-full"
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt=""
-              />
+              <div id="avatar-container" />
             </button>
           </div>
           <div
@@ -108,32 +106,23 @@
             id="user-menu-dropdown"
           >
             <a
-              href="#"
-              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-              tabindex="-1"
-              id="user-menu-item-0"
-              >Your Profile</a
-            >
-            <a
-              href="#"
+              href="/admin/dashboard"
               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               role="menuitem"
               tabindex="-1"
               id="user-menu-item-1"
-              >Settings</a
+              >Dashboard</a
             >
-            <form method="POST" action="/logout">
-              <button
-                type="submit"
-                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                role="menuitem"
-                tabindex="-1"
-                id="user-menu-item-2"
-              >
-                Sign out
-              </button>
-            </form>
+            <a
+              hx-post="/user/logout"
+              hx-target="main"
+              hx-swap="innerHTML"
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              role="menuitem"
+              id="sign-out"
+            >
+              Sign out
+            </a>
           </div>
         </div>
         {{ else }}
@@ -178,28 +167,65 @@
   document.addEventListener("DOMContentLoaded", function () {
     const userMenuButton = document.getElementById("user-menu-button");
     const userMenu = document.getElementById("user-menu-dropdown");
+    const avatarContainer = document.getElementById("avatar-container");
 
-    // Toggle user menu dropdown
-    userMenuButton.addEventListener("click", function (event) {
-      event.stopPropagation();
-      const isExpanded =
-        userMenuButton.getAttribute("aria-expanded") === "true";
-      userMenuButton.setAttribute("aria-expanded", !isExpanded);
-      userMenu.classList.toggle("hidden");
-    });
+    const firstName = "{{ if .User }}{{ .User.FirstName }}{{ else }}{{ end }}";
+    const lastName = "{{ if .User }}{{ .User.LastName }}{{ else }}{{ end }}";
 
-    // Close user menu when clicking outside
-    document.addEventListener("click", function (event) {
-      if (
-        !userMenu.contains(event.target) &&
-        !userMenuButton.contains(event.target)
-      ) {
-        if (!userMenu.classList.contains("hidden")) {
-          userMenuButton.setAttribute("aria-expanded", false);
-          userMenu.classList.add("hidden");
+    // Check if avatarContainer exists and populate the avatar
+    if (avatarContainer && firstName && lastName) {
+      const avatar = createAvatar(firstName, lastName);
+      avatarContainer.appendChild(avatar);
+    }
+
+    // Check if user menu elements exist before adding event listeners
+    if (userMenuButton && userMenu) {
+      // Toggle user menu dropdown
+      userMenuButton.addEventListener("click", function (event) {
+        event.stopPropagation();
+        const isExpanded =
+          userMenuButton.getAttribute("aria-expanded") === "true";
+        userMenuButton.setAttribute("aria-expanded", !isExpanded);
+        userMenu.classList.toggle("hidden");
+      });
+
+      // Close user menu when clicking outside
+      document.addEventListener("click", function (event) {
+        if (
+          !userMenu.contains(event.target) &&
+          !userMenuButton.contains(event.target)
+        ) {
+          if (!userMenu.classList.contains("hidden")) {
+            userMenuButton.setAttribute("aria-expanded", false);
+            userMenu.classList.add("hidden");
+          }
         }
-      }
-    });
+      });
+    } else {
+      console.log("User menu elements not found. Skipping menu functionality.");
+    }
   });
+
+  function createAvatar(firstName, lastName) {
+    const initials = `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
+    const colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33A8"];
+    const backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+    const avatar = document.createElement("div");
+    avatar.style.width = "32px";
+    avatar.style.height = "32px";
+    avatar.style.borderRadius = "50%";
+    avatar.style.display = "flex";
+    avatar.style.alignItems = "center";
+    avatar.style.justifyContent = "center";
+    avatar.style.backgroundColor = backgroundColor;
+    avatar.style.color = "#fff";
+    avatar.style.fontSize = "16px";
+    avatar.style.fontWeight = "bold";
+    avatar.style.textTransform = "uppercase";
+    avatar.textContent = initials;
+
+    return avatar;
+  }
 </script>
 {{end}}

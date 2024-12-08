@@ -38,7 +38,7 @@ func mainRouter(h *handlers.Handlers, sessionManager *session.Manager) http.Hand
 		r.Post("/register", h.RegisterUserHandler)
 		r.Get("/login", h.LoginUserHandler)
 		r.Post("/login", h.LoginUserHandler)
-		r.Post("/logout", h.LogoutUserHandler)
+		r.Get("/about", h.AboutPageHandler)
 
 	})
 
@@ -55,19 +55,17 @@ func authenticatedRouter(h *handlers.Handlers, sessionManager *session.Manager) 
 
 	// Routes requiring user authentication
 	// Add other authenticated routes here
-	r.Get("/about", h.AboutPageHandler)
-
+	r.Post("/logout", h.LogoutUserHandler)
 	return r
 }
 
 func adminRouter(h *handlers.Handlers, sessionManager *session.Manager) http.Handler {
 	r := chi.NewRouter()
-	r.Use(appMiddleware.RequireAuthentication(sessionManager)) // Apply custom authentication middleware
-	r.Use(appMiddleware.RequireAdmin(sessionManager))          // Apply admin authorization middleware
 
-	// Admin routes
-	r.Get("/file-browser", h.AdminUploadFileHandler)
-	// Add other admin-specific routes here
+	r.Use(appMiddleware.RequireAuthentication(sessionManager)) // Validate session
+	r.Use(appMiddleware.RequireAdmin(sessionManager))          // Check admin role
+
+	r.Get("/dashboard", h.AdminDashboardHandler)
 
 	return r
 }

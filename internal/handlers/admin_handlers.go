@@ -11,11 +11,6 @@ import (
 
 func (h *Handlers) AdminUploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the user is an admin (this is just an example, your actual check may vary)
-	role := r.Context().Value("userRole")
-	if role != "admin" {
-		http.Error(w, "Unauthorized access", http.StatusForbidden)
-		return
-	}
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -62,4 +57,10 @@ func (h *Handlers) AdminUploadFileHandler(w http.ResponseWriter, r *http.Request
 
 	h.logger.Printf("File uploaded successfully to S3: %s", handler.Filename)
 	http.Redirect(w, r, "/admin/file-browser", http.StatusSeeOther)
+}
+
+func (h *Handlers) AdminDashboardHandler(w http.ResponseWriter, r *http.Request) {
+	// Check if the user is an admin (this is just an example, your actual check may vary)
+	w.Write([]byte("Admin Dashboard"))
+	// h.Render(w, r, "admin-dashboard", nil)
 }

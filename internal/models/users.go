@@ -12,18 +12,27 @@ import (
 
 type User struct {
 	ID             int64
-	Name           string
+	FirstName      string
+	LastName       string
 	Email          string
 	HashedPassword string
 	Role           string
 	CreatedAt      time.Time
 }
 
+type SanitizedUser struct {
+	ID        int64
+	FirstName string
+	LastName  string
+	Email     string
+	Role      string
+}
+
 type UserModel struct {
 	DB *pgxpool.Pool
 }
 
-func (m *UserModel) Insert(name, email, password, role string) error {
+func (m *UserModel) Insert(firstName, lastName, email, password, role string) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return err
@@ -31,15 +40,16 @@ func (m *UserModel) Insert(name, email, password, role string) error {
 
 	// Use named parameters to insert the user
 	args := pgx.NamedArgs{
-		"name":            name,
+		"firstname":       firstName,
+		"lastname":        lastName,
 		"email":           email,
 		"hashed_password": string(hashedPassword),
 		"role":            role,
 	}
 
 	query := `
-        INSERT INTO users (name, email, hashed_password, role, created_at)
-        VALUES (@name, @email, @hashed_password, @role, NOW())
+        INSERT INTO users (first_name, last_name, email, hashed_password, role, created_at)
+        VALUES (@firstname, @lastname, @email, @hashed_password, @role, NOW())
     `
 	_, err = m.DB.Exec(context.Background(), query, args)
 	return err
@@ -47,7 +57,7 @@ func (m *UserModel) Insert(name, email, password, role string) error {
 
 func (m *UserModel) GetByEmail(email string) (*User, error) {
 	query := `
-        SELECT id, name, email, hashed_password, role, created_at 
+        SELECT id, first_name, last_name, email, hashed_password, role, created_at 
         FROM users 
         WHERE email = @email
     `
@@ -60,7 +70,8 @@ func (m *UserModel) GetByEmail(email string) (*User, error) {
 	user := &User{}
 	err := m.DB.QueryRow(context.Background(), query, args).Scan(
 		&user.ID,
-		&user.Name,
+		&user.FirstName,
+		&user.LastName,
 		&user.Email,
 		&user.HashedPassword,
 		&user.Role,
@@ -74,14 +85,14 @@ func (m *UserModel) GetByEmail(email string) (*User, error) {
 
 func (m *UserModel) GetByID(id int64) (*User, error) {
 	query := `
-			SELECT id, name, email, role
+			SELECT id, first_name, last_name, email, role
 			FROM users
 			WHERE id = $1
 	`
 	row := m.DB.QueryRow(context.Background(), query, id)
 
 	user := &User{}
-	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Role)
+	err := row.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.Role)
 	if err != nil {
 		return nil, err
 	}

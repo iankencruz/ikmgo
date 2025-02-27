@@ -33,9 +33,13 @@
             type="text"
             name="first-name"
             id="first-name"
+            value='{{.Request.FormValue "first_name"}}'
             required
             class="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
           />
+          {{if index .FieldErrors "first_name"}}
+          <p class="text-red-500">{{index .FieldErrors "first_name"}}</p>
+          {{end}}
         </div>
       </div>
       <div>
@@ -47,9 +51,13 @@
             type="text"
             name="last-name"
             id="last-name"
+            value='{{.Request.FormValue "last_name"}}'
             required
             class="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
           />
+          {{if index .FieldErrors "last_name"}}
+          <p class="text-red-500">{{index .FieldErrors "last_name"}}</p>
+          {{end}}
         </div>
       </div>
 
@@ -62,10 +70,16 @@
             type="email"
             name="email"
             id="email"
+            hx-get="/validate-email"
+            hx-trigger="blur"
+            hx-target="#email-error"
+            hx-swap="innerHTML"
+            value='{{.Request.FormValue "email"}}'
             autocomplete="email"
             required
             class="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
           />
+          <div id="email-error" class="error-text"></div>
         </div>
       </div>
 
@@ -91,6 +105,9 @@
             required
             class="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
           />
+          {{ if index .FieldErrors "password" }}
+          <p class="text-red-500">{{index .FieldErrors "password"}}</p>
+          {{ end }}
         </div>
       </div>
 

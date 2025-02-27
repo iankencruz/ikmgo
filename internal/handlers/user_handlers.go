@@ -2,8 +2,10 @@
 package handlers
 
 import (
+	"ikm/internal/validation"
 	"ikm/internal/viewdata"
 	"net/http"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,13 +25,28 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		name := r.FormValue("name")
+		fname := r.FormValue("first-name")
+		lname := r.FormValue("last-name")
 		email := r.FormValue("email")
 		password := r.FormValue("password")
-		role := "user"
+		role := "admin"
+
+		errors := validation.ValidateForm(
+			validation.ValidateRequired("first_name", fname),
+			validation.ValidateRequired("last_name", lname),
+			validation.ValidateEmail("email", email),
+			validation.ValidateMinLength("password", password, 8),
+		)
+
+		if len(errors) > 0 {
+			data := viewdata.NewTemplateData(r, h.session, h.User)
+			data.FieldErrors = errors
+			h.Render(w, r, "registerPage", data)
+			return
+		}
 
 		// Use named parameters to insert a new user
-		err = h.User.Insert(name, email, password, role)
+		err = h.User.Insert(fname, lname, email, password, role)
 		if err != nil {
 			http.Error(w, "Unable to create user", http.StatusInternalServerError)
 			return
@@ -66,10 +83,13 @@ func (h *Handlers) LoginUserHandler(w http.ResponseWriter, r *http.Request) {
 		// Set a session or cookie for the authenticated user
 		session, _ := h.session.Get(r, "user-session")
 		session.Values["userID"] = user.ID
-		session.Values["userRole"] = user.Role
-		session.Save(r, w)
+		session.Values["userRole"] = strings.ToLower(user.Role)
+		if err := session.Save(r, w); err != nil {
+			http.Error(w, "Failed to save session", http.StatusInternalServerError)
+			return
+		}
 
-		h.logger.Printf("Session userID: %d", user.ID)
+		h.logger.Printf("Session user Role: %v", user.Role)
 
 		http.Redirect(w, r, "/galleries", http.StatusSeeOther)
 	}
@@ -83,6 +103,9 @@ func (h *Handlers) LogoutUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Remove isAuthenticated from the session
+	delete(session.Values, "isAuthenticated")
+
 	// Mark the session as expired
 	session.Options.MaxAge = -1
 
@@ -93,6 +116,25 @@ func (h *Handlers) LogoutUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle HTMX request for redirect
+	if r.Header.Get("HX-Request") != "" {
+		w.Header().Set("HX-Redirect", "/")
+		return
+	}
+
 	// Redirect to the homepage or login page after logout
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (h *Handlers) ValidateEmailHandler(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	err := validation.ValidateEmail("email", email)
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte(err.Message))
+		return
+	}
+
+	w.Write([]byte("Email is valid"))
 }

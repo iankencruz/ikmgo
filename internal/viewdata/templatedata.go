@@ -2,7 +2,6 @@
 package viewdata
 
 import (
-	"fmt"
 	"ikm/internal/models"
 	"ikm/internal/session"
 	"net/http"
@@ -19,17 +18,20 @@ type TemplateData struct {
 	CurrentPath     string
 	NavLinks        []NavLink
 	FlashMessages   []string
+	Flash           string
 	CurrentYear     int
 	IsAuthenticated bool
-	UserName        string
+	User            *models.SanitizedUser
 	Title           string
 	Data            interface{}
+	FieldErrors     map[string]string
+	Form            any
 }
 
 // internal/viewdata/templatedata.go
 func NewTemplateData(r *http.Request, sessionManager *session.Manager, userModel *models.UserModel) TemplateData {
 	isAuthenticated := false
-	userName := ""
+	var user *models.SanitizedUser
 
 	// Retrieve the userID from the session
 	session, err := sessionManager.Get(r, "user-session")
@@ -39,19 +41,25 @@ func NewTemplateData(r *http.Request, sessionManager *session.Manager, userModel
 			isAuthenticated = true
 
 			// Fetch the user from the database using the userID
-			user, err := userModel.GetByID(userID)
+			dbUser, err := userModel.GetByID(userID)
 			if err == nil {
-				userName = user.Name
+				user = &models.SanitizedUser{
+					ID:        dbUser.ID,
+					FirstName: dbUser.FirstName,
+					LastName:  dbUser.LastName,
+					Email:     dbUser.Email,
+					Role:      dbUser.Role,
+				}
+
 			}
 		}
 	}
 
-	fmt.Printf("UserName: %s, IsAuthenticated: %v\n", userName, isAuthenticated)
-
 	return TemplateData{
 		CurrentYear:     time.Now().Year(),
 		IsAuthenticated: isAuthenticated,
-		UserName:        userName,
+		User:            user,
 		FlashMessages:   []string{},
+		FieldErrors:     make(map[string]string),
 	}
 }

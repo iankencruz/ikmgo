@@ -1,0 +1,10 @@
+<div class="media-item" id="media-{{ .ID }}">
+  <img src="/static/uploads/{{ .FileName }}" width="150" />
+  <button
+    hx-delete="/admin/media/{{ .ID }}"
+    hx-target="#media-{{ .ID }}"
+    hx-swap="outerHTML"
+  >
+    ❌ Delete
+  </button>
+</div>

@@ -1,0 +1,12 @@
+<form
+  id="upload-form"
+  hx-post="/admin/upload"
+  hx-encoding="multipart/form-data"
+  hx-target="#media-list"
+  hx-swap="beforeend"
+>
+  <label>Select File:</label>
+  <input type="file" name="file" required />
+  <input type="hidden" name="gallery_id" value="{{ .Gallery.ID }}" />
+  <button type="submit">Upload</button>
+</form>

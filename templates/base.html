@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>{{ .Title }}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.5"></script>
+    <link rel="stylesheet" href="/static/css/tailwind.css" />
+  </head>
+  <body class="bg-gray-100 text-gray-900">
+    <!-- Include Navbar -->
+    {{ template "navbar" . }}
+
+    <div id="content">{{ template "content" . }}</div>
+
+    <!-- Include Footer -->
+    {{ template "footer" . }}
+  </body>
+</html>

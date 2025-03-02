@@ -1,0 +1,8 @@
+{{ define "content" }}
+<h1>Create New Gallery</h1>
+<form method="POST" action="/admin/gallery/create">
+  <label>Gallery Title:</label>
+  <input type="text" name="title" required />
+  <button type="submit">Create</button>
+</form>
+{{ end }}

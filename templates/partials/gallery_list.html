@@ -1,0 +1,7 @@
+{{ define "gallery_list" }}
+<ul>
+  {{ range .Galleries }}
+  <li><a href="/gallery/{{ .ID }}">{{ .Title }}</a></li>
+  {{ end }}
+</ul>
+{{ end }}

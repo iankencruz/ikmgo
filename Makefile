@@ -7,7 +7,7 @@ build: compile
 .PHONY: compile
 compile:
 	@echo -n '** Generating tailwind.css file | '
-	@npx @tailwindcss/cli -i ./ui/static/css/input.css -o ./ui/static/css/tailwind.css 
+	@npx @tailwindcss/cli -i ./static/css/input.css -o ./static/css/tailwind.css
 
 ## run: Run the binary
 .PHONY: run

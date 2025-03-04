@@ -1,0 +1,23 @@
+{{ define "content" }}
+<h1 class="text-2xl font-bold">Media</h1>
+
+<a href="/admin/media/upload" class="px-4 py-2 bg-blue-500 text-white rounded"
+  >Upload Media</a
+>
+
+<!-- HTMX will insert new media items here -->
+<table class="w-full mt-4 border-collapse border border-gray-300">
+  <thead>
+    <tr class="bg-gray-200">
+      <th class="border border-gray-300 px-4 py-2">ID</th>
+      <th class="border border-gray-300 px-4 py-2">Preview</th>
+      <th class="border border-gray-300 px-4 py-2">File Name</th>
+      <th class="border border-gray-300 px-4 py-2">Gallery</th>
+      <th class="border border-gray-300 px-4 py-2">Actions</th>
+    </tr>
+  </thead>
+  <tbody id="media-list">
+    {{ range .Media }} {{ template "partials/media_item.html" . }} {{ end }}
+  </tbody>
+</table>
+{{ end }}

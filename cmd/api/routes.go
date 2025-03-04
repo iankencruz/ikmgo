@@ -29,12 +29,21 @@ func (app *Application) routes() http.Handler {
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(app.AuthMiddleware)
-		r.Get("/", app.AdminDashboard)
+		r.Get("/dashboard", app.AdminDashboard)
+		// Galleries
+		r.Get("/galleries", app.AdminGalleries)
 		r.Get("/gallery/create", app.CreateGalleryForm)
 		r.Post("/gallery/create", app.CreateGallery)
-		r.Get("/upload", app.UploadMediaForm)
-		r.Post("/upload", app.UploadMedia)
-		r.Delete("/media/{id}", app.DeleteMedia)
+		//Users
+		r.Get("/users", app.AdminUsers)
+		r.Get("/users/edit/{id}", app.EditUserForm)
+		r.Post("/users/edit/{id}", app.UpdateUser)
+		r.Post("/users/delete/{id}", app.DeleteUser)
+		// Media management
+		r.Get("/media", app.AdminMedia)
+		r.Get("/media/upload", app.UploadMediaForm)
+		r.Post("/media/upload", app.UploadMedia)
+		r.Post("/media/delete/{id}", app.DeleteMedia)
 	})
 
 	return r

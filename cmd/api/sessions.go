@@ -7,10 +7,10 @@ import (
 	"github.com/gorilla/securecookie"
 )
 
-// Secure cookie instance for encoding & decoding session data
+// Secure cookie instance
 var cookieHandler = securecookie.New(
-	securecookie.GenerateRandomKey(64), // Encryption key
-	securecookie.GenerateRandomKey(32), // Signing key
+	securecookie.GenerateRandomKey(64),
+	securecookie.GenerateRandomKey(32),
 )
 
 // SetSession stores the user ID in a secure, encrypted cookie
@@ -21,10 +21,10 @@ func SetSession(userID int, w http.ResponseWriter) {
 			Name:     "session",
 			Value:    encoded,
 			Path:     "/",
-			HttpOnly: true,                           // Prevents JavaScript access (XSS protection)
-			Secure:   true,                           // Set to false for local development
-			SameSite: http.SameSiteStrictMode,        // Protects against CSRF
-			Expires:  time.Now().Add(24 * time.Hour), // 24-hour expiration
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			Expires:  time.Now().Add(24 * time.Hour),
 		}
 		http.SetCookie(w, cookie)
 	}
@@ -46,7 +46,7 @@ func GetSession(r *http.Request) (int, error) {
 	return userID, nil
 }
 
-// ClearSession removes the session cookie (logs the user out)
+// ClearSession removes the session cookie
 func ClearSession(w http.ResponseWriter) {
 	cookie := &http.Cookie{
 		Name:     "session",
@@ -54,7 +54,7 @@ func ClearSession(w http.ResponseWriter) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		Expires:  time.Now().Add(-1 * time.Hour), // Expired in the past
+		Expires:  time.Now().Add(-1 * time.Hour),
 	}
 	http.SetCookie(w, cookie)
 }

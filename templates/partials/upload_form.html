@@ -1,3 +1,4 @@
+{{ define "upload_form" }}
 <form
   id="upload-form"
   hx-post="/admin/upload"
@@ -10,3 +11,4 @@
   <input type="hidden" name="gallery_id" value="{{ .Gallery.ID }}" />
   <button type="submit">Upload</button>
 </form>
+{{ end }}

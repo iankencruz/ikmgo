@@ -12,34 +12,35 @@ import (
 // Home Page Handler
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 	galleries, _ := app.GalleryModel.GetAll()
-	render(w, r, "index.html", map[string]interface{}{
+	app.render(w, r, "index.html", map[string]interface{}{
 		"Title":     "Home",
 		"Galleries": galleries,
 	})
 }
 
 // Register Handler (GET + POST)
-
 func (app *Application) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		render(w, r, "register.html", nil)
+		app.render(w, r, "register.html", nil)
 		return
 	}
 
 	// Process registration form
+	fname := strings.TrimSpace(r.FormValue("fname"))
+	lname := strings.TrimSpace(r.FormValue("lname"))
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
 
 	// Validate input
-	if email == "" || password == "" {
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+	if fname == "" || lname == "" || email == "" || password == "" {
+		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
 	}
 
 	// Create user
-	err := app.UserModel.Create(email, password)
+	err := app.UserModel.Create(fname, lname, email, password)
 	if err != nil {
-		log.Printf("❌ Error creating user: %v", err) // ✅ Log the exact error
+		log.Printf("❌ Error creating user: %v", err)
 		http.Error(w, "Error creating user", http.StatusInternalServerError)
 		return
 	}
@@ -51,7 +52,7 @@ func (app *Application) Register(w http.ResponseWriter, r *http.Request) {
 // Login Handler (GET + POST)
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		render(w, r, "login.html", nil)
+		app.render(w, r, "login.html", nil)
 		return
 	}
 
@@ -69,7 +70,7 @@ func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
 	SetSession(user.ID, w)
 
 	// Redirect to admin dashboard
-	http.Redirect(w, r, "/admin", http.StatusFound)
+	http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
 }
 
 // Logout Handler
@@ -80,12 +81,30 @@ func (app *Application) Logout(w http.ResponseWriter, r *http.Request) {
 
 // Admin Dashboard Handler
 func (app *Application) AdminDashboard(w http.ResponseWriter, r *http.Request) {
-	render(w, r, "admin/dashboard.html", nil)
+	data := map[string]interface{}{} // ✅ Ensure a map is passed
+	data["Title"] = "Admin Dashboard"
+	app.render(w, r, "admin/dashboard.html", data)
+}
+
+func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
+	galleries, err := app.GalleryModel.GetAll()
+	if err != nil {
+		log.Printf("❌ Error fetching galleries: %v", err)
+		http.Error(w, "Error fetching galleries", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":     "Manage Galleries",
+		"Galleries": galleries,
+	}
+
+	app.render(w, r, "admin/galleries.html", data)
 }
 
 // Form to Create a New Gallery
 func (app *Application) CreateGalleryForm(w http.ResponseWriter, r *http.Request) {
-	render(w, r, "admin/create_gallery.html", nil)
+	app.render(w, r, "admin/create_gallery.html", nil)
 }
 
 // Create a New Gallery (POST)
@@ -99,9 +118,105 @@ func (app *Application) CreateGallery(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin", http.StatusFound)
 }
 
+func (app *Application) DeleteGallery(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	// Delete from database
+	err := app.GalleryModel.Delete(id)
+	if err != nil {
+		http.Error(w, "Error deleting gallery", http.StatusInternalServerError)
+		return
+	}
+
+	// HTMX: Remove the row without reloading
+	w.WriteHeader(http.StatusOK)
+}
+
+func (app *Application) AdminUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := app.UserModel.GetAll()
+	if err != nil {
+		log.Printf("❌ Error fetching users: %v", err)
+		http.Error(w, "Error fetching users", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title": "Manage Users",
+		"Users": users,
+	}
+
+	app.render(w, r, "admin/users.html", data)
+}
+
+func (app *Application) EditUserForm(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	user, err := app.UserModel.GetUserByID(id)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title": "Edit User",
+		"User":  user,
+	}
+
+	app.render(w, r, "admin/edit_user.html", data)
+}
+
+func (app *Application) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	fname := r.FormValue("fname")
+	lname := r.FormValue("lname")
+	email := r.FormValue("email")
+
+	err := app.UserModel.Update(id, fname, lname, email)
+	if err != nil {
+		http.Error(w, "Error updating user", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+}
+
+func (app *Application) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	err := app.UserModel.Delete(id)
+	if err != nil {
+		http.Error(w, "Error deleting user", http.StatusInternalServerError)
+		return
+	}
+
+	// HTMX: Remove the row without reloading
+	w.WriteHeader(http.StatusOK)
+}
+
+func (app *Application) AdminMedia(w http.ResponseWriter, r *http.Request) {
+	media, err := app.MediaModel.GetAll()
+	if err != nil {
+		log.Printf("❌ Error fetching media: %v", err)
+		http.Error(w, "Error fetching media", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title": "Manage Media",
+		"Media": media,
+	}
+
+	app.render(w, r, "admin/media.html", data)
+}
+
 // Upload Media Form (GET)
 func (app *Application) UploadMediaForm(w http.ResponseWriter, r *http.Request) {
-	render(w, r, "admin/upload_media.html", nil)
+	galleries, _ := app.GalleryModel.GetAll() // Fetch galleries for selection
+	data := map[string]interface{}{
+		"Title":     "Upload Media",
+		"Galleries": galleries,
+	}
+
+	app.render(w, r, "admin/upload_media.html", data)
 }
 
 // Upload Media File (POST)
@@ -115,14 +230,12 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Get gallery ID
 	galleryID, err := strconv.Atoi(r.FormValue("gallery_id"))
 	if err != nil {
 		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
 		return
 	}
 
-	// Save file name
 	fileName := strconv.Itoa(galleryID) + "_" + handler.Filename
 	err = app.MediaModel.Insert(fileName, galleryID)
 	if err != nil {
@@ -130,49 +243,38 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// HTMX response: Update media list dynamically
+	// ✅ Return only the new media item as an HTMX response
 	w.Header().Set("HX-Trigger", "mediaAdded")
-	render(w, r, "partials/media_item.html", map[string]interface{}{
-		"FileName": fileName,
+	app.render(w, r, "partials/media_item.html", map[string]interface{}{
+		"FileName":  fileName,
+		"GalleryID": galleryID,
 	})
 }
 
 // Delete Media File (DELETE)
 func (app *Application) DeleteMedia(w http.ResponseWriter, r *http.Request) {
-	mediaID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	err := app.MediaModel.Delete(id)
 	if err != nil {
-		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		http.Error(w, "Error deleting media", http.StatusInternalServerError)
 		return
 	}
 
-	// Retrieve media file info but don't use the variable
-	_, err = app.MediaModel.GetByID(mediaID)
-	if err != nil {
-		http.Error(w, "Media not found", http.StatusNotFound)
-		return
-	}
-
-	// Delete media from database
-	err = app.MediaModel.Delete(mediaID)
-	if err != nil {
-		http.Error(w, "Failed to delete media", http.StatusInternalServerError)
-		return
-	}
-
-	// HTMX removes the media item dynamically
+	// ✅ Return 200 OK without content so HTMX removes the item
 	w.WriteHeader(http.StatusOK)
 }
 
 // About Page Handler
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
-	render(w, r, "about.html", map[string]interface{}{
+	app.render(w, r, "about.html", map[string]interface{}{
 		"Title": "About Me",
 	})
 }
 
 // Contact Page Handler
 func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
-	render(w, r, "contact.html", map[string]interface{}{
+	app.render(w, r, "contact.html", map[string]interface{}{
 		"Title": "Contact Me",
 	})
 }
@@ -183,7 +285,7 @@ func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 	gallery, _ := app.GalleryModel.GetByID(id)
 	media, _ := app.MediaModel.GetByGalleryID(id)
 
-	render(w, r, "gallery.html", map[string]interface{}{
+	app.render(w, r, "gallery.html", map[string]interface{}{
 		"Title":   gallery.Title,
 		"Gallery": gallery,
 		"Media":   media,

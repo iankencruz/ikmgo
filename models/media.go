@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -58,8 +59,7 @@ func (m *MediaModel) GetByID(id int) (*Media, error) {
 
 // Delete removes a media file from the database
 func (m *MediaModel) Delete(id int) error {
-	_, err := m.DB.Exec(context.Background(),
-		"DELETE FROM media WHERE id=$1", id)
+	_, err := m.DB.Exec(context.Background(), "DELETE FROM media WHERE id=$1", id)
 	return err
 }
 
@@ -68,4 +68,26 @@ func (m *MediaModel) DeleteByGalleryID(galleryID int) error {
 	_, err := m.DB.Exec(context.Background(),
 		"DELETE FROM media WHERE gallery_id=$1", galleryID)
 	return err
+}
+
+func (m *MediaModel) GetAll() ([]Media, error) {
+	rows, err := m.DB.Query(context.Background(), "SELECT id, file_name, gallery_id FROM media ORDER BY id DESC")
+	if err != nil {
+		log.Printf("❌ Database query error: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var media []Media
+	for rows.Next() {
+		var m Media
+		if err := rows.Scan(&m.ID, &m.FileName, &m.GalleryID); err != nil {
+			log.Printf("❌ Error scanning row: %v", err)
+			return nil, err
+		}
+		media = append(media, m)
+	}
+
+	log.Printf("✅ Retrieved %d media files", len(media))
+	return media, nil
 }

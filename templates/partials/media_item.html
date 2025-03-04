@@ -1,10 +1,21 @@
-<div class="media-item" id="media-{{ .ID }}">
-  <img src="/static/uploads/{{ .FileName }}" width="150" />
-  <button
-    hx-delete="/admin/media/{{ .ID }}"
-    hx-target="#media-{{ .ID }}"
-    hx-swap="outerHTML"
-  >
-    ❌ Delete
-  </button>
-</div>
+{{ define "partials/media_item.html" }}
+<tr id="media-{{ .ID }}">
+  <td class="border border-gray-300 px-4 py-2">{{ .ID }}</td>
+  <td class="border border-gray-300 px-4 py-2">
+    <img src="/uploads/{{ .FileName }}" class="w-20 h-20 object-cover" />
+  </td>
+  <td class="border border-gray-300 px-4 py-2">{{ .FileName }}</td>
+  <td class="border border-gray-300 px-4 py-2">{{ .GalleryID }}</td>
+  <td class="border border-gray-300 px-4 py-2">
+    <button
+      hx-post="/admin/media/delete/{{ .ID }}"
+      hx-target="#media-{{ .ID }}"
+      hx-swap="outerHTML"
+      hx-confirm="Are you sure?"
+      class="text-red-500"
+    >
+      Delete
+    </button>
+  </td>
+</tr>
+{{ end }}

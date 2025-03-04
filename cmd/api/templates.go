@@ -12,10 +12,13 @@ import (
 // TemplateCache stores precompiled templates
 var TemplateCache = make(map[string]*template.Template)
 
-// LoadTemplates dynamically loads all templates
+// LoadTemplates dynamically loads all templates with support for multiple base layouts
 func LoadTemplates() error {
 	basePath := "templates/"
-	layout := filepath.Join(basePath, "base.html")
+	baseTemplates := map[string]string{
+		"public": filepath.Join(basePath, "base.html"),
+		"admin":  filepath.Join(basePath, "admin_base.html"),
+	}
 
 	var templates []string
 	var partials []string
@@ -28,11 +31,6 @@ func LoadTemplates() error {
 
 		// Ignore directories
 		if info.IsDir() {
-			return nil
-		}
-
-		// Skip base.html (it is included manually)
-		if strings.HasSuffix(path, "base.html") {
 			return nil
 		}
 
@@ -49,9 +47,17 @@ func LoadTemplates() error {
 		return err
 	}
 
-	// Load full-page templates with partials
+	// Load full-page templates with respective base layouts
 	for _, tmplPath := range templates {
-		t, err := template.ParseFiles(append([]string{layout, tmplPath}, partials...)...)
+		var selectedBase string
+		if strings.Contains(tmplPath, "admin/") {
+			selectedBase = baseTemplates["admin"]
+		} else {
+			selectedBase = baseTemplates["public"]
+		}
+
+		// ✅ Ensure all templates and partials are loaded
+		t, err := template.ParseFiles(append([]string{selectedBase, tmplPath}, partials...)...)
 		if err != nil {
 			log.Printf("❌ Error loading template %s: %v", tmplPath, err)
 			return err
@@ -60,35 +66,33 @@ func LoadTemplates() error {
 		// Extract filename without path
 		templateName := strings.TrimPrefix(tmplPath, basePath)
 		TemplateCache[templateName] = t
-
 		log.Printf("✅ Loaded template: %s", templateName)
-	}
-
-	// Load partials separately (if needed)
-	for _, partialPath := range partials {
-		t, err := template.ParseFiles(partialPath)
-		if err != nil {
-			log.Printf("❌ Error loading partial template %s: %v", partialPath, err)
-			return err
-		}
-
-		// Extract filename without path
-		partialName := strings.TrimPrefix(partialPath, basePath)
-		TemplateCache[partialName] = t
-
-		log.Printf("✅ Loaded partial: %s", partialName)
 	}
 
 	return nil
 }
 
 // Render function to display templates
-func render(w http.ResponseWriter, r *http.Request, tmpl string, data interface{}) {
+func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl string, data map[string]interface{}) {
 	t, ok := TemplateCache[tmpl]
 	if !ok {
 		log.Printf("❌ Template not found in cache: %s", tmpl)
 		http.Error(w, "Template not found", http.StatusInternalServerError)
 		return
+	}
+
+	// ✅ Ensure data map is always initialized
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	// Get user session
+	userID, _ := GetSession(r)
+	if userID > 0 {
+		user, err := app.UserModel.GetUserByID(userID)
+		if err == nil {
+			data["User"] = user // Pass user data to template
+		}
 	}
 
 	err := t.Execute(w, data)

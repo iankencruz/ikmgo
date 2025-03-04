@@ -21,23 +21,23 @@ func (g *GalleryModel) Create(title string) error {
 	return err
 }
 
-// GetAll retrieves all galleries from the database
-func (g *GalleryModel) GetAll() ([]*Gallery, error) {
+// GetAll fetches all galleries
+func (g *GalleryModel) GetAll() ([]Gallery, error) {
 	rows, err := g.DB.Query(context.Background(), "SELECT id, title FROM galleries ORDER BY id DESC")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var galleries []*Gallery
+	var galleries []Gallery
 	for rows.Next() {
-		g := &Gallery{}
-		err := rows.Scan(&g.ID, &g.Title)
-		if err != nil {
+		var gallery Gallery
+		if err := rows.Scan(&gallery.ID, &gallery.Title); err != nil {
 			return nil, err
 		}
-		galleries = append(galleries, g)
+		galleries = append(galleries, gallery)
 	}
+
 	return galleries, nil
 }
 
@@ -61,7 +61,7 @@ func (g *GalleryModel) Update(id int, title string) error {
 }
 
 // Delete removes a gallery from the database
-func (g *GalleryModel) Delete(id int) error {
+func (g *GalleryModel) Delete(id string) error {
 	_, err := g.DB.Exec(context.Background(), "DELETE FROM galleries WHERE id=$1", id)
 	return err
 }

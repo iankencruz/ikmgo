@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/minio/minio-go/v7"
 )
 
 // Home Page Handler
@@ -237,18 +240,46 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileName := strconv.Itoa(galleryID) + "_" + handler.Filename
-	err = app.MediaModel.Insert(fileName, galleryID)
+
+	// 4) Build the key that includes our "Uploads/" folder prefix
+	fileKey := "Uploads/" + fileName
+
+	// Upload to s3
+	fileSize := handler.Size
+	contentType := handler.Header.Get("Content-Type")
+
+	ctx := context.Background()
+	_, err = app.S3Client.PutObject(
+		ctx,
+		app.S3Bucket,
+		fileKey,
+		file,
+		fileSize,
+		minio.PutObjectOptions{
+			ContentType: contentType,
+			// ACL for S3-compatible services (like Vultr)
+			// This sets the file to be publicly readable
+			UserMetadata: map[string]string{
+				"x-amz-acl": "public-read",
+			},
+		})
+
+	if err != nil {
+		log.Printf("❌ Error uploading to S3: %v", err)
+		http.Error(w, "Error uploading file", http.StatusInternalServerError)
+		return
+	}
+
+	// Construct public URL
+	fileURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
+
+	err = app.MediaModel.Insert(fileURL, galleryID)
 	if err != nil {
 		http.Error(w, "Error saving media", http.StatusInternalServerError)
 		return
 	}
 
-	// ✅ Return only the new media item as an HTMX response
-	w.Header().Set("HX-Trigger", "mediaAdded")
-	app.render(w, r, "partials/media_item.html", map[string]interface{}{
-		"FileName":  fileName,
-		"GalleryID": galleryID,
-	})
+	http.Redirect(w, r, "/admin/media", http.StatusFound)
 }
 
 // Delete Media File (DELETE)

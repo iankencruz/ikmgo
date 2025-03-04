@@ -10,6 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 type Application struct {
@@ -17,6 +19,11 @@ type Application struct {
 	UserModel    *models.UserModel
 	GalleryModel *models.GalleryModel
 	MediaModel   *models.MediaModel
+
+	// S3 configuration
+	S3Client *minio.Client
+	S3Bucket string
+	S3Region string
 }
 
 func main() {
@@ -31,6 +38,37 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+	}
+
+	// S3 configuration
+	// 1) Gather S3 config from environment
+	s3Endpoint := os.Getenv("VULTR_S3_ENDPOINT")
+	s3AccessKey := os.Getenv("VULTR_S3_ACCESS_KEY")
+	s3SecretKey := os.Getenv("VULTR_S3_SECRET_KEY")
+	s3Bucket := os.Getenv("VULTR_S3_BUCKET")
+	s3Region := os.Getenv("VULTR_S3_REGION")
+
+	// 2) Initialize MinIO S3 client
+	s3Client, err := minio.New(s3Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(s3AccessKey, s3SecretKey, ""),
+		Secure: true, // set to false if not using SSL
+	})
+	if err != nil {
+		log.Fatalf("Unable to initialize S3 client: %v", err)
+	}
+
+	// Optionally ensure that the bucket exists; create if it doesn't:
+	ctx := context.Background()
+	exists, errBucketExists := s3Client.BucketExists(ctx, s3Bucket)
+	if errBucketExists != nil {
+		log.Fatalf("Error checking if S3 bucket exists: %v", errBucketExists)
+	}
+	if !exists {
+		err = s3Client.MakeBucket(ctx, s3Bucket, minio.MakeBucketOptions{Region: s3Region})
+		if err != nil {
+			log.Fatalf("Unable to create S3 bucket: %v", err)
+		}
+		log.Printf("Created bucket %s\n", s3Bucket)
 	}
 
 	// Database connection
@@ -66,6 +104,9 @@ func main() {
 		UserModel:    &models.UserModel{DB: dbPool},
 		GalleryModel: &models.GalleryModel{DB: dbPool},
 		MediaModel:   &models.MediaModel{DB: dbPool},
+		S3Client:     s3Client,
+		S3Bucket:     s3Bucket,
+		S3Region:     s3Region,
 	}
 
 	// Start server

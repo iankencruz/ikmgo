@@ -2,7 +2,7 @@
 <tr id="media-{{ .ID }}">
   <td class="border border-gray-300 px-4 py-2">{{ .ID }}</td>
   <td class="border border-gray-300 px-4 py-2">
-    <img src="/uploads/{{ .FileName }}" class="w-20 h-20 object-cover" />
+    <img src="{{ .FileName }}" alt="Uploaded media" class="some-css-class" />
   </td>
   <td class="border border-gray-300 px-4 py-2">{{ .FileName }}</td>
   <td class="border border-gray-300 px-4 py-2">{{ .GalleryID }}</td>

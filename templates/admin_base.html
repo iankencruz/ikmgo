@@ -1,19 +1,23 @@
 <!doctype html>
-<html lang="en" class="h-full bg-white min-h-svh">
+<html lang="en" class="h-full bg-white">
   <head>
-    <title>{{ .Title }}</title>
-    <script src="https://unpkg.com/htmx.org@1.9.5"></script>
+    <meta charset="UTF-8" />
+    <title>Application Shell with Off-Canvas Sidebar</title>
+
+    <!-- Tailwind CSS (replace with your own build if needed) -->
     <link rel="stylesheet" href="/static/css/tailwind.css" />
+    <!-- JavaScript for open/close sidebar -->
+    <script src="/static/js/main.js"></script>
   </head>
+
   <body class="h-full">
-    <div>
-      {{ template "admin_sidebar" . }}
-      <main class="py-10 lg:pl-72">
-        <div class="px-4 sm:px-6 lg:px-8">
-          <!-- Your content -->
-          <div id="content">{{ template "content" . }}</div>
-        </div>
-      </main>
-    </div>
+    {{ template "admin_sidebar" . }}
+    <!-- MAIN CONTENT -->
+    <main class="py-10 lg:pl-72">
+      <div class="px-4 sm:px-6 lg:px-8">
+        <!-- Your content goes here -->
+        {{ template "content" . }}
+      </div>
+    </main>
   </body>
 </html>

@@ -22,22 +22,36 @@ func (g *GalleryModel) Create(title string) error {
 }
 
 // GetAll fetches all galleries
-func (g *GalleryModel) GetAll() ([]Gallery, error) {
-	rows, err := g.DB.Query(context.Background(), "SELECT id, title FROM galleries ORDER BY id DESC")
+func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
+	rows, err := g.DB.Query(context.Background(),
+		`SELECT g.id, g.title, 
+                (SELECT COUNT(*) FROM media WHERE media.gallery_id = g.id) AS media_count
+         FROM galleries g
+         ORDER BY g.id DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var galleries []Gallery
+	var galleries []map[string]interface{}
 	for rows.Next() {
-		var gallery Gallery
-		if err := rows.Scan(&gallery.ID, &gallery.Title); err != nil {
+		var id int
+		var title string
+		var mediaCount int
+
+		err := rows.Scan(&id, &title, &mediaCount)
+		if err != nil {
 			return nil, err
+		}
+
+		// Store each gallery as a map (key-value)
+		gallery := map[string]interface{}{
+			"ID":         id,
+			"Title":      title,
+			"MediaCount": mediaCount, // ✅ Includes media count
 		}
 		galleries = append(galleries, gallery)
 	}
-
 	return galleries, nil
 }
 

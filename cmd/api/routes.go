@@ -34,16 +34,17 @@ func (app *Application) routes() http.Handler {
 		r.Get("/galleries", app.AdminGalleries)
 		r.Get("/gallery/create", app.CreateGalleryForm)
 		r.Post("/gallery/create", app.CreateGallery)
+		r.Delete("/gallery/{id}", app.DeleteGallery)
 		//Users
 		r.Get("/users", app.AdminUsers)
 		r.Get("/users/edit/{id}", app.EditUserForm)
 		r.Post("/users/edit/{id}", app.UpdateUser)
-		r.Post("/users/delete/{id}", app.DeleteUser)
+		r.Delete("/users/{id}", app.DeleteUser)
 		// Media management
 		r.Get("/media", app.AdminMedia)
 		r.Get("/media/upload", app.UploadMediaForm)
 		r.Post("/media/upload", app.UploadMedia)
-		r.Post("/media/delete/{id}", app.DeleteMedia)
+		r.Delete("/media/{id}", app.DeleteMedia)
 	})
 
 	return r

@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -10,6 +9,7 @@ import (
 type Media struct {
 	ID        int
 	FileName  string
+	URL       string
 	GalleryID int
 }
 
@@ -18,16 +18,16 @@ type MediaModel struct {
 }
 
 // Insert adds a new media file and links it to a gallery
-func (m *MediaModel) Insert(fileName string, galleryID int) error {
+func (m *MediaModel) Insert(fileName, url string, galleryID int) error {
 	_, err := m.DB.Exec(context.Background(),
-		"INSERT INTO media (file_name, gallery_id) VALUES ($1, $2)", fileName, galleryID)
+		"INSERT INTO media (file_name, url, gallery_id) VALUES ($1, $2, $3)", fileName, url, galleryID)
 	return err
 }
 
 // GetByGalleryID retrieves all media files for a specific gallery
 func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 	rows, err := m.DB.Query(context.Background(),
-		"SELECT id, file_name FROM media WHERE gallery_id=$1 ORDER BY id DESC", galleryID)
+		"SELECT id, file_name, url FROM media WHERE gallery_id=$1 ORDER BY id DESC", galleryID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 	var media []*Media
 	for rows.Next() {
 		m := &Media{}
-		err := rows.Scan(&m.ID, &m.FileName)
+		err := rows.Scan(&m.ID, &m.FileName, &m.URL)
 		if err != nil {
 			return nil, err
 		}
@@ -70,24 +70,35 @@ func (m *MediaModel) DeleteByGalleryID(galleryID int) error {
 	return err
 }
 
-func (m *MediaModel) GetAll() ([]Media, error) {
-	rows, err := m.DB.Query(context.Background(), "SELECT id, file_name, gallery_id FROM media ORDER BY id DESC")
+func (m *MediaModel) GetAll() ([]map[string]interface{}, error) {
+	rows, err := m.DB.Query(context.Background(),
+		`SELECT media.id, media.file_name, media.url, galleries.title 
+		 FROM media 
+		 JOIN galleries ON media.gallery_id = galleries.id 
+		 ORDER BY media.id DESC`)
 	if err != nil {
-		log.Printf("❌ Database query error: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	var media []Media
+	var media []map[string]interface{} // ✅ Return as a slice of maps
 	for rows.Next() {
-		var m Media
-		if err := rows.Scan(&m.ID, &m.FileName, &m.GalleryID); err != nil {
-			log.Printf("❌ Error scanning row: %v", err)
+		var id int
+		var fileName, url, galleryTitle string
+
+		err := rows.Scan(&id, &fileName, &url, &galleryTitle)
+		if err != nil {
 			return nil, err
 		}
-		media = append(media, m)
-	}
 
-	log.Printf("✅ Retrieved %d media files", len(media))
+		// Store each media record as a map (key-value)
+		mediaItem := map[string]interface{}{
+			"ID":           id,
+			"FileName":     fileName,
+			"URL":          url,
+			"GalleryTitle": galleryTitle, // ✅ No change to Media struct
+		}
+		media = append(media, mediaItem)
+	}
 	return media, nil
 }

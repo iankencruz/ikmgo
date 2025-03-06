@@ -24,7 +24,11 @@ func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 // Register Handler (GET + POST)
 func (app *Application) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		app.render(w, r, "register.html", nil)
+		data := map[string]interface{}{
+			"Title":       "Register",
+			"HideSidebar": true, // Prevents the sidebar from rendering
+		}
+		app.render(w, r, "register.html", data)
 		return
 	}
 
@@ -55,7 +59,11 @@ func (app *Application) Register(w http.ResponseWriter, r *http.Request) {
 // Login Handler (GET + POST)
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		app.render(w, r, "login.html", nil)
+		data := map[string]interface{}{
+			"Title":       "Login",
+			"HideSidebar": true, // Prevents the sidebar from rendering
+		}
+		app.render(w, r, "login.html", data)
 		return
 	}
 
@@ -86,6 +94,7 @@ func (app *Application) Logout(w http.ResponseWriter, r *http.Request) {
 func (app *Application) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{} // ✅ Ensure a map is passed
 	data["Title"] = "Admin Dashboard"
+	data["ActiveLink"] = "dashboard"
 	app.render(w, r, "admin/dashboard.html", data)
 }
 
@@ -98,8 +107,9 @@ func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]interface{}{
-		"Title":     "Manage Galleries",
-		"Galleries": galleries,
+		"Title":      "Manage Galleries",
+		"Galleries":  galleries, // ✅ Now contains `MediaCount`
+		"ActiveLink": "galleries",
 	}
 
 	app.render(w, r, "admin/galleries.html", data)
@@ -144,8 +154,9 @@ func (app *Application) AdminUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]interface{}{
-		"Title": "Manage Users",
-		"Users": users,
+		"Title":      "Manage Users",
+		"Users":      users,
+		"ActiveLink": "users",
 	}
 
 	app.render(w, r, "admin/users.html", data)
@@ -204,8 +215,9 @@ func (app *Application) AdminMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]interface{}{
-		"Title": "Manage Media",
-		"Media": media,
+		"Title":      "Manage Media",
+		"Media":      media,
+		"ActiveLink": "media",
 	}
 
 	app.render(w, r, "admin/media.html", data)
@@ -273,7 +285,7 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	// Construct public URL
 	fileURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
 
-	err = app.MediaModel.Insert(fileURL, galleryID)
+	err = app.MediaModel.Insert(fileName, fileURL, galleryID)
 	if err != nil {
 		http.Error(w, "Error saving media", http.StatusInternalServerError)
 		return

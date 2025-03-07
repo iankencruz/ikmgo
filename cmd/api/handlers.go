@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"ikm/models"
 	"log"
 	"net/http"
 	"os"
@@ -14,10 +15,14 @@ import (
 
 // Home Page Handler
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
-	galleries, _ := app.GalleryModel.GetAll()
+	featuredGallery, images, err := app.GalleryModel.GetFeatured()
+	if err != nil {
+		log.Printf("❌ Error fetching featured gallery: %v", err)
+	}
 	app.render(w, r, "index.html", map[string]interface{}{
-		"Title":     "Home",
-		"Galleries": galleries,
+		"Title":           "Home",
+		"FeaturedGallery": featuredGallery,
+		"Images":          images,
 	})
 }
 
@@ -106,10 +111,22 @@ func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ✅ Ensure GalleryMedia is always initialized
+	galleryMedia := make(map[int][]*models.Media)
+
+	for _, gallery := range galleries {
+		media, err := app.MediaModel.GetByGalleryID(gallery["ID"].(int)) // ✅ Type assert gallery ID
+		if err != nil {
+			log.Printf("❌ Error fetching media for gallery %d: %v", gallery["ID"], err)
+			continue
+		}
+		galleryMedia[gallery["ID"].(int)] = media
+	}
+
 	data := map[string]interface{}{
-		"Title":      "Manage Galleries",
-		"Galleries":  galleries, // ✅ Now contains `MediaCount`
-		"ActiveLink": "galleries",
+		"Title":        "Manage Galleries",
+		"Galleries":    galleries,
+		"GalleryMedia": galleryMedia, // ✅ Ensures it is always available
 	}
 
 	app.render(w, r, "admin/galleries.html", data)
@@ -322,6 +339,19 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Get All Galleries
+func (app *Application) Galleries(w http.ResponseWriter, r *http.Request) {
+	galleries, err := app.GalleryModel.GetAll()
+	if err != nil {
+		http.Error(w, "Error fetching galleries", http.StatusInternalServerError)
+		return
+	}
+	app.render(w, r, "galleries.html", map[string]interface{}{
+		"Title":     "Galleries",
+		"Galleries": galleries,
+	})
+}
+
 // View Gallery Page
 func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -332,5 +362,60 @@ func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 		"Title":   gallery.Title,
 		"Gallery": gallery,
 		"Media":   media,
+	})
+}
+
+func (app *Application) SetFeaturedGallery(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+		return
+	}
+
+	err = app.GalleryModel.SetFeatured(id)
+	if err != nil {
+		http.Error(w, "Error updating featured gallery", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/galleries", http.StatusSeeOther)
+}
+
+func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
+	galleryID, err := strconv.Atoi(chi.URLParam(r, "galleryID"))
+	if err != nil {
+		log.Printf("❌ Invalid gallery ID: %v", err)
+		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+		return
+	}
+
+	mediaID, err := strconv.Atoi(r.FormValue("media_id"))
+	if err != nil {
+		log.Printf("❌ Invalid media ID: %v", err)
+		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		return
+	}
+
+	err = app.GalleryModel.SetCoverImage(galleryID, mediaID)
+	if err != nil {
+		log.Printf("❌ Error setting cover image: %v", err)
+		http.Error(w, "Error setting cover image", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch the updated cover image
+	media, err := app.MediaModel.GetByID(mediaID)
+	if err != nil {
+		log.Printf("❌ Cover image not found: %v", err)
+		http.Error(w, "Cover image not found", http.StatusInternalServerError)
+		return
+	}
+
+	coverImageURL := "/uploads/" + media.FileName // Adjust based on your storage location
+
+	// ✅ Return the updated cover image partial for HTMX swap
+	app.render(w, r, "partials/cover_image.html", map[string]interface{}{
+		"GalleryID":     galleryID,
+		"CoverImageURL": coverImageURL,
 	})
 }

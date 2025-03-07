@@ -1,6 +1,20 @@
 {{ define "content" }}
-<h1>Welcome to My Photography Portfolio</h1>
-<p>Explore my work and projects.</p>
+<h1 class="text-2xl font-bold">Welcome to My Gallery</h1>
 
-<h2>Galleries</h2>
-{{ template "gallery_list" . }} {{ end }}
+{{ if .FeaturedGallery }}
+<div class="mt-6 border p-4 shadow-lg">
+  <h2 class="text-xl font-semibold">{{ .FeaturedGallery.Title }}</h2>
+  <p>Check out the featured gallery!</p>
+
+  <div class="grid grid-cols-3 gap-4 mt-4">
+    {{ range .Images }}
+    <div class="border p-2 shadow">
+      <img src="{{ .URL }}" class="w-full h-48 object-cover" />
+      <!-- ✅ Use URL directly -->
+    </div>
+    {{ end }}
+  </div>
+</div>
+{{ else }}
+<p class="text-gray-500">No featured gallery selected yet.</p>
+{{ end }} {{ end }}

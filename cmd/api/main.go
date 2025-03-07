@@ -106,8 +106,9 @@ func main() {
 		MediaModel:   &models.MediaModel{DB: dbPool},
 		S3Client:     s3Client,
 		S3Bucket:     s3Bucket,
-		S3Region:     s3Region,
 	}
+
+	DebugRoutes(app.routes())
 
 	// Start server
 	srv := &http.Server{

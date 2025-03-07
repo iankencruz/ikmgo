@@ -1,0 +1,11 @@
+{{ if .CoverImageURL }}
+<img
+  src="{{ .CoverImageURL }}"
+  class="w-16 h-16 object-cover rounded"
+  id="cover-{{ .GalleryID }}"
+/>
+{{ else }}
+<div class="w-16 h-16 bg-gray-200 flex items-center justify-center rounded">
+  <span class="text-gray-500 text-xs">No Cover</span>
+</div>
+{{ end }}

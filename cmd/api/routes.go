@@ -41,6 +41,7 @@ func (app *Application) routes() http.Handler {
 		r.Post("/gallery/feature/{id}", app.SetFeaturedGallery) // Set Featured Gallery
 
 		r.Post("/gallery/{galleryID}/cover", app.SetCoverImage)
+		r.Post("/gallery/{id}/publish", app.SetGalleryVisibility)
 
 		//Users
 		r.Get("/users", app.AdminUsers)

@@ -341,7 +341,7 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 
 // Get All Galleries
 func (app *Application) Galleries(w http.ResponseWriter, r *http.Request) {
-	galleries, err := app.GalleryModel.GetAll()
+	galleries, err := app.GalleryModel.GetAllPublic()
 	if err != nil {
 		http.Error(w, "Error fetching galleries", http.StatusInternalServerError)
 		return
@@ -418,4 +418,28 @@ func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
 		"GalleryID":     galleryID,
 		"CoverImageURL": coverImageURL,
 	})
+}
+
+func (app *Application) SetGalleryVisibility(w http.ResponseWriter, r *http.Request) {
+	// Get gallery id from URL parameter
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		log.Printf("❌ Invalid gallery ID: %v", err)
+		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+		return
+	}
+
+	// The checkbox sends "on" if checked, empty if not.
+	published := r.FormValue("published") == "on"
+
+	// Update the published status in the database.
+	err = app.GalleryModel.SetPublished(id, published)
+	if err != nil {
+		log.Printf("❌ Error updating gallery visibility: %v", err)
+		http.Error(w, "Error updating gallery visibility", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with a 200 OK (no content is needed for HTMX)
+	w.WriteHeader(http.StatusOK)
 }

@@ -16,6 +16,7 @@
       <!-- ✅ New column -->
       <th class="border border-gray-300 px-4 py-2">Title</th>
       <th class="border border-gray-300 px-4 py-2">Media Count</th>
+      <th class="border border-gray-300 px-4 py-2">Publish</th>
       <!-- ✅ Separate column -->
       <th class="border border-gray-300 px-4 py-2">Actions</th>
     </tr>
@@ -62,6 +63,21 @@
 
       <td class="border border-gray-300 px-4 py-2">{{ .Title }}</td>
       <td class="border border-gray-300 px-4 py-2">{{ .MediaCount }} Images</td>
+      <td class="border border-gray-300 px-4 py-2">
+        <input
+          type="checkbox"
+          name="published"
+          {{
+          if
+          .Published
+          }}checked{{
+          end
+          }}
+          hx-post="/admin/gallery/{{ .ID }}/publish"
+          hx-trigger="change"
+          hx-swap="none"
+        />
+      </td>
       <td class="border border-gray-300 px-4 py-2">
         <a href="/admin/gallery/edit/{{ .ID }}" class="text-blue-500">Edit</a> |
         <button

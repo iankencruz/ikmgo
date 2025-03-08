@@ -13,6 +13,7 @@ type Gallery struct {
 	CoverImageID  *int    // ✅ Cover Image ID (Nullable)
 	CoverImageURL *string // ✅ Stores image URL (Joined from media)
 	MediaCount    int     // ✅ Count of Media Items
+	Published     bool
 }
 
 type GalleryModel struct {
@@ -70,6 +71,44 @@ func (g *GalleryModel) SetFeatured(id int) error {
 func (g *GalleryModel) Create(title string) error {
 	_, err := g.DB.Exec(context.Background(), "INSERT INTO galleries (title) VALUES ($1)", title)
 	return err
+}
+
+func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
+	rows, err := g.DB.Query(context.Background(),
+		`SELECT g.id, g.title, g.cover_image_id, m.url AS cover_image_url,
+                (SELECT COUNT(*) FROM media WHERE media.gallery_id = g.id) AS media_count
+         FROM galleries g
+         LEFT JOIN media m ON g.cover_image_id = m.id
+         WHERE g.published = TRUE
+         ORDER BY g.id DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var galleries []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var title string
+		var coverImageID *int
+		var coverImageURL *string
+		var mediaCount int
+
+		err := rows.Scan(&id, &title, &coverImageID, &coverImageURL, &mediaCount)
+		if err != nil {
+			return nil, err
+		}
+
+		gallery := map[string]interface{}{
+			"ID":            id,
+			"Title":         title,
+			"CoverImageID":  coverImageID,
+			"CoverImageURL": coverImageURL,
+			"MediaCount":    mediaCount,
+		}
+		galleries = append(galleries, gallery)
+	}
+	return galleries, nil
 }
 
 // GetAll fetches all galleries
@@ -140,5 +179,10 @@ func (g *GalleryModel) Update(id int, title string) error {
 // Delete removes a gallery from the database
 func (g *GalleryModel) Delete(id string) error {
 	_, err := g.DB.Exec(context.Background(), "DELETE FROM galleries WHERE id=$1", id)
+	return err
+}
+
+func (g *GalleryModel) SetPublished(id int, published bool) error {
+	_, err := g.DB.Exec(context.Background(), "UPDATE galleries SET published=$1 WHERE id=$2", published, id)
 	return err
 }

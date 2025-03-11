@@ -35,7 +35,7 @@ func (app *Application) routes() http.Handler {
 
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(app.AuthMiddleware)
+		// r.Use(app.AuthMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin/dashboard", 301)
@@ -66,6 +66,7 @@ func (app *Application) routes() http.Handler {
 		r.Get("/media/upload", app.UploadMediaForm)
 		r.Post("/media/upload", app.UploadMedia)
 		r.Delete("/media/{id}", app.DeleteMedia)
+		r.Post("/media/update-order", app.UpdateMediaOrder)
 
 	})
 

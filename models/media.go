@@ -2,7 +2,9 @@ package models
 
 import (
 	"context"
+	"log"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -11,6 +13,7 @@ type Media struct {
 	FileName  string
 	URL       string
 	GalleryID int
+	Position  int
 }
 
 type MediaModel struct {
@@ -18,16 +21,19 @@ type MediaModel struct {
 }
 
 // Insert adds a new media file and links it to a gallery
-func (m *MediaModel) Insert(fileName, url string, galleryID int) error {
+func (m *MediaModel) Insert(fileName, fileURL string, galleryID, position int) error {
 	_, err := m.DB.Exec(context.Background(),
-		"INSERT INTO media (file_name, url, gallery_id) VALUES ($1, $2, $3)", fileName, url, galleryID)
+		"INSERT INTO media (file_name, url, gallery_id, position) VALUES ($1, $2, $3, $4)",
+		fileName, fileURL, galleryID, position)
+
 	return err
 }
 
 // GetByGalleryID retrieves all media files for a specific gallery
+
 func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 	rows, err := m.DB.Query(context.Background(),
-		"SELECT id, file_name, url FROM media WHERE gallery_id=$1 ORDER BY id DESC", galleryID)
+		"SELECT id, file_name, url, position FROM media WHERE gallery_id=$1 ORDER BY position DESC", galleryID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +42,7 @@ func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 	var media []*Media
 	for rows.Next() {
 		m := &Media{}
-		err := rows.Scan(&m.ID, &m.FileName, &m.URL)
+		err := rows.Scan(&m.ID, &m.FileName, &m.URL, &m.Position)
 		if err != nil {
 			return nil, err
 		}
@@ -101,4 +107,86 @@ func (m *MediaModel) GetAll() ([]map[string]interface{}, error) {
 		media = append(media, mediaItem)
 	}
 	return media, nil
+}
+
+func (m *MediaModel) UpdatePosition(mediaID, newPosition, galleryID int) error {
+	_, err := m.DB.Exec(context.Background(),
+		"UPDATE media SET position = $1 WHERE id = $2 AND gallery_id = $3", newPosition, mediaID, galleryID)
+	return err
+}
+
+func (m *MediaModel) ReorderPositions(galleryID, mediaID, newPosition int) error {
+	tx, err := m.DB.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	// ✅ Fetch current position
+	var currentPosition int
+	err = tx.QueryRow(context.Background(),
+		"SELECT position FROM media WHERE id = $1 AND gallery_id = $2", mediaID, galleryID).
+		Scan(&currentPosition)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.Printf("❌ Media ID %d not found in gallery %d", mediaID, galleryID)
+			return nil // ✅ Exit gracefully instead of failing
+		}
+		return err
+	}
+
+	// If position hasn't changed, do nothing
+	if currentPosition == newPosition {
+		return nil
+	}
+
+	// ✅ Adjust positions dynamically
+	if currentPosition < newPosition {
+		_, err = tx.Exec(context.Background(),
+			"UPDATE media SET position = position - 1 WHERE gallery_id = $1 AND position > $2 AND position <= $3",
+			galleryID, currentPosition, newPosition)
+	} else {
+		_, err = tx.Exec(context.Background(),
+			"UPDATE media SET position = position + 1 WHERE gallery_id = $1 AND position >= $3 AND position < $2",
+			galleryID, newPosition, currentPosition)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// ✅ Set new position
+	_, err = tx.Exec(context.Background(),
+		"UPDATE media SET position = $1 WHERE id = $2 AND gallery_id = $3", newPosition, mediaID, galleryID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(context.Background()) // ✅ Apply changes
+}
+
+func (m *MediaModel) MediaExists(mediaID, galleryID int) (bool, error) {
+	var exists bool
+	err := m.DB.QueryRow(context.Background(),
+		"SELECT EXISTS (SELECT 1 FROM media WHERE id = $1 AND gallery_id = $2)",
+		mediaID, galleryID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (m *MediaModel) GetNextPosition(galleryID int) (int, error) {
+	var maxPosition int
+
+	err := m.DB.QueryRow(context.Background(),
+		"SELECT COALESCE(MAX(position), -1) FROM media WHERE gallery_id = $1", galleryID).
+		Scan(&maxPosition)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return maxPosition + 1, nil // ✅ Assigns the next available position
 }

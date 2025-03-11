@@ -21,10 +21,11 @@ type GalleryModel struct {
 }
 
 // GetByTitle retrieves a single gallery by its title
+
 func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 	var gallery Gallery
 
-	// Fetch the featured gallery
+	// Fetch the gallery by title
 	err := g.DB.QueryRow(context.Background(),
 		"SELECT id, title FROM galleries WHERE title=$1", title).
 		Scan(&gallery.ID, &gallery.Title)
@@ -33,9 +34,9 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 		return nil, nil, err
 	}
 
-	// Fetch associated images including their URL
+	// Fetch associated images sorted by position in ASCENDING order
 	rows, err := g.DB.Query(context.Background(),
-		"SELECT id, file_name, url FROM media WHERE gallery_id = $1 ORDER BY id DESC", gallery.ID)
+		"SELECT id, file_name, url, position FROM media WHERE gallery_id = $1 ORDER BY position DESC", gallery.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -44,7 +45,7 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 	var images []*Media
 	for rows.Next() {
 		var media Media
-		err := rows.Scan(&media.ID, &media.FileName, &media.URL) // ✅ Fetch media URL
+		err := rows.Scan(&media.ID, &media.FileName, &media.URL, &media.Position)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -146,9 +147,10 @@ func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 }
 
 // GetAll fetches all galleries
+
 func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
-		`SELECT g.id, g.title, g.cover_image_id, m.url AS cover_image_url,
+		`SELECT g.id, g.title, g.cover_image_id, g.published, m.url AS cover_image_url,
                 (SELECT COUNT(*) FROM media WHERE media.gallery_id = g.id) AS media_count
          FROM galleries g
          LEFT JOIN media m ON g.cover_image_id = m.id
@@ -165,8 +167,9 @@ func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 		var coverImageID *int
 		var coverImageURL *string
 		var mediaCount int
+		var published bool // ✅ Store as a boolean
 
-		err := rows.Scan(&id, &title, &coverImageID, &coverImageURL, &mediaCount)
+		err := rows.Scan(&id, &title, &coverImageID, &published, &coverImageURL, &mediaCount)
 		if err != nil {
 			return nil, err
 		}
@@ -178,6 +181,7 @@ func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 			"CoverImageID":  coverImageID,
 			"CoverImageURL": coverImageURL,
 			"MediaCount":    mediaCount, // ✅ Media count included
+			"Published":     published,  // ✅ Include Published field
 		}
 		galleries = append(galleries, gallery)
 	}

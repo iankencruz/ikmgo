@@ -116,18 +116,25 @@ func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
 	galleryMedia := make(map[int][]*models.Media)
 
 	for _, gallery := range galleries {
-		media, err := app.MediaModel.GetByGalleryID(gallery["ID"].(int)) // ✅ Type assert gallery ID
-		if err != nil {
-			log.Printf("❌ Error fetching media for gallery %d: %v", gallery["ID"], err)
+		// ✅ Use map indexing instead of dot notation
+		galleryID, ok := gallery["ID"].(int)
+		if !ok {
+			log.Printf("❌ Invalid gallery ID format: %v", gallery["ID"])
 			continue
 		}
-		galleryMedia[gallery["ID"].(int)] = media
+
+		media, err := app.MediaModel.GetByGalleryID(galleryID)
+		if err != nil {
+			log.Printf("❌ Error fetching media for gallery %d: %v", galleryID, err)
+			continue
+		}
+		galleryMedia[galleryID] = media
 	}
 
 	data := map[string]interface{}{
 		"Title":        "Manage Galleries",
-		"Galleries":    galleries,
-		"GalleryMedia": galleryMedia, // ✅ Ensures it is always available
+		"Galleries":    galleries,    // ✅ Passes proper `[]map[string]interface{}` slice
+		"GalleryMedia": galleryMedia, // ✅ Ensures media is available per gallery
 	}
 
 	app.render(w, r, "admin/galleries.html", data)
@@ -310,6 +317,13 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ✅ Fetch the next available position
+	nextPosition, err := app.MediaModel.GetNextPosition(galleryID)
+	if err != nil {
+		http.Error(w, "Error retrieving next position", http.StatusInternalServerError)
+		return
+	}
+
 	fileName := strconv.Itoa(galleryID) + "_" + handler.Filename
 	fileKey := "Uploads/" + fileName
 
@@ -331,7 +345,7 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	fileURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
 
-	err = app.MediaModel.Insert(fileName, fileURL, galleryID)
+	err = app.MediaModel.Insert(fileName, fileURL, galleryID, nextPosition)
 	if err != nil {
 		http.Error(w, "Error saving media", http.StatusInternalServerError)
 		return
@@ -480,4 +494,45 @@ func (app *Application) SetGalleryVisibility(w http.ResponseWriter, r *http.Requ
 
 	// Respond with a 200 OK (no content is needed for HTMX)
 	w.WriteHeader(http.StatusOK)
+}
+
+func (app *Application) UpdateMediaOrder(w http.ResponseWriter, r *http.Request) {
+	mediaID, err := strconv.Atoi(r.FormValue("media_id"))
+	if err != nil {
+		log.Printf("❌ Invalid media ID: %v", err)
+		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		return
+	}
+
+	newPosition, err := strconv.Atoi(r.FormValue("position"))
+	if err != nil {
+		log.Printf("❌ Invalid position: %v", err)
+		http.Error(w, "Invalid position", http.StatusBadRequest)
+		return
+	}
+
+	galleryID, err := strconv.Atoi(r.FormValue("gallery_id"))
+	if err != nil {
+		log.Printf("❌ Invalid gallery ID: %v", err)
+		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+		return
+	}
+
+	// ✅ Ensure media exists before updating
+	exists, err := app.MediaModel.MediaExists(mediaID, galleryID)
+	if err != nil || !exists {
+		log.Printf("❌ Media ID %d does not exist in Gallery ID %d", mediaID, galleryID)
+		http.Error(w, "Media not found", http.StatusNotFound)
+		return
+	}
+
+	// ✅ Update all media positions in the gallery
+	err = app.MediaModel.ReorderPositions(galleryID, mediaID, newPosition)
+	if err != nil {
+		log.Printf("❌ Error updating media order: %v", err)
+		http.Error(w, "Error updating media order", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK) // ✅ Success response
 }

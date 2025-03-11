@@ -3,7 +3,10 @@
   <td class="border border-gray-300 px-4 py-2 text-center">{{ .ID }}</td>
   <td class="border border-gray-300 px-4 py-2 text-center">
     <a href="{{.URL}}"
-      ><img src="{{ .URL }}" alt="Uploaded media" class="some-css-class"
+      ><img
+        src="{{ .URL }}"
+        alt="Uploaded media"
+        class="max-h-40 w-full object-cover"
     /></a>
   </td>
   <td class="border border-gray-300 px-4 py-2 text-center">{{ .FileName }}</td>

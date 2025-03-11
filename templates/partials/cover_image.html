@@ -1,3 +1,5 @@
+{{ define "cover_image" }}
+<!-- define start-->
 {{ if .CoverImageURL }}
 <img
   src="{{ .CoverImageURL }}"
@@ -8,4 +10,6 @@
 <div class="w-16 h-16 bg-gray-200 flex items-center justify-center rounded">
   <span class="text-gray-500 text-xs">No Cover</span>
 </div>
+{{ end }}
+<!-- define end-->
 {{ end }}

@@ -47,7 +47,20 @@ func LoadTemplates() error {
 		return err
 	}
 
-	// Load full-page templates with respective base layouts
+	// ✅ First, parse all partials and store them separately
+	partialsTemplate := template.New("")
+	for _, partialPath := range partials {
+		_, err := partialsTemplate.ParseFiles(partialPath)
+		if err != nil {
+			log.Printf("❌ Error loading partial template %s: %v", partialPath, err)
+			return err
+		}
+		templateName := strings.TrimPrefix(partialPath, basePath)
+		TemplateCache[templateName] = partialsTemplate
+		log.Printf("✅ Loaded partial: %s", templateName)
+	}
+
+	// ✅ Load full-page templates with respective base layouts
 	for _, tmplPath := range templates {
 		var selectedBase string
 		if strings.Contains(tmplPath, "admin/") {
@@ -56,7 +69,7 @@ func LoadTemplates() error {
 			selectedBase = baseTemplates["public"]
 		}
 
-		// ✅ Ensure all templates and partials are loaded
+		// ✅ Parse the full template, including all partials
 		t, err := template.ParseFiles(append([]string{selectedBase, tmplPath}, partials...)...)
 		if err != nil {
 			log.Printf("❌ Error loading template %s: %v", tmplPath, err)
@@ -73,6 +86,7 @@ func LoadTemplates() error {
 }
 
 // Render function to display templates
+
 func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl string, data map[string]interface{}) {
 	t, ok := TemplateCache[tmpl]
 	if !ok {
@@ -81,21 +95,30 @@ func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl stri
 		return
 	}
 
-	// ✅ Ensure data map is always initialized
 	if data == nil {
 		data = make(map[string]interface{})
 	}
 
-	// Get user session
+	// Optionally, pass the logged-in user (if any).
 	userID, _ := GetSession(r)
 	if userID > 0 {
 		user, err := app.UserModel.GetUserByID(userID)
 		if err == nil {
-			data["User"] = user // Pass user data to template
+			data["User"] = user
 		}
 	}
 
-	err := t.Execute(w, data)
+	var err error
+
+	// For partials in "partials/" we use ExecuteTemplate with the name from `define "..."`.
+	if strings.HasPrefix(tmpl, "partials/") {
+		// "cover_image" is the define name we used in cover_image.html
+		err = t.ExecuteTemplate(w, "cover_image", data)
+	} else {
+		// For full-page templates, just render the entire file normally
+		err = t.Execute(w, data)
+	}
+
 	if err != nil {
 		log.Printf("❌ Error executing template %s: %v", tmpl, err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)

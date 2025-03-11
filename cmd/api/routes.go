@@ -31,6 +31,11 @@ func (app *Application) routes() http.Handler {
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(app.AuthMiddleware)
+
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/admin/dashboard", 301)
+		})
+
 		r.Get("/dashboard", app.AdminDashboard)
 
 		// Galleries
@@ -39,6 +44,8 @@ func (app *Application) routes() http.Handler {
 		r.Post("/gallery/create", app.CreateGallery)
 		r.Delete("/gallery/{id}", app.DeleteGallery)
 		r.Post("/gallery/feature/{id}", app.SetFeaturedGallery) // Set Featured Gallery
+		r.Get("/gallery/edit/{id}", app.EditGalleryForm)
+		r.Post("/gallery/{id}/update", app.UpdateGallery)
 
 		r.Post("/gallery/{galleryID}/cover", app.SetCoverImage)
 		r.Post("/gallery/{id}/publish", app.SetGalleryVisibility)

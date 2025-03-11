@@ -108,7 +108,7 @@ func main() {
 		S3Bucket:     s3Bucket,
 	}
 
-	DebugRoutes(app.routes())
+	// DebugRoutes(app.routes())
 
 	// Start server
 	srv := &http.Server{

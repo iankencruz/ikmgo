@@ -1,0 +1,52 @@
+{{ define "content" }}
+<h1 class="text-2xl font-bold mb-4">Edit Gallery: {{ .Gallery.Title }}</h1>
+
+<!-- Form to Update Gallery Title -->
+<form hx-post="/admin/gallery/{{ .Gallery.ID }}/update" hx-target="this">
+  <label class="block mb-2 text-sm font-medium">Gallery Title</label>
+  <input
+    type="text"
+    name="title"
+    value="{{ .Gallery.Title }}"
+    class="border p-2 w-full rounded"
+  />
+  <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded mt-2">
+    Update
+  </button>
+</form>
+
+<h2 class="text-xl font-bold mt-6">Gallery Media</h2>
+<div class="grid grid-cols-3 gap-4 mt-4">
+  {{ range .Media }}
+  <div id="media-{{ .ID }}" class="relative border p-2 rounded">
+    <img src="{{ .URL }}" class="w-full h-48 object-cover rounded" />
+    <button
+      hx-delete="/admin/media/{{ .ID }}"
+      hx-confirm="Are you sure?"
+      hx-target="#media-{{ .ID }}"
+      hx-swap="outerHTML swap:1s"
+      class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 text-sm rounded"
+    >
+      Delete
+    </button>
+  </div>
+  {{ end }}
+</div>
+
+<!-- Upload Media -->
+<h2 class="text-xl font-bold mt-6">Upload New Media</h2>
+<form
+  hx-post="/admin/media/upload"
+  hx-encoding="multipart/form-data"
+  hx-target=".grid"
+  hx-trigger="submit"
+  onsubmit="return false;"
+>
+  <!-- ✅ Prevent default form submission -->
+  <input type="hidden" name="gallery_id" value="{{ .Gallery.ID }}" />
+  <input type="file" name="file" class="border p-2 w-full rounded" />
+  <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded mt-2">
+    Upload
+  </button>
+</form>
+{{ end }}

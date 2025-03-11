@@ -49,8 +49,8 @@ func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 func (m *MediaModel) GetByID(id int) (*Media, error) {
 	var media Media
 	err := m.DB.QueryRow(context.Background(),
-		"SELECT id, file_name, gallery_id FROM media WHERE id=$1", id).
-		Scan(&media.ID, &media.FileName, &media.GalleryID)
+		"SELECT id, file_name, url, gallery_id FROM media WHERE id=$1", id).
+		Scan(&media.ID, &media.FileName, &media.URL, &media.GalleryID)
 	if err != nil {
 		return nil, err
 	}

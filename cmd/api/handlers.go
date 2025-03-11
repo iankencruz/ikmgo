@@ -137,6 +137,44 @@ func (app *Application) CreateGalleryForm(w http.ResponseWriter, r *http.Request
 	app.render(w, r, "admin/create_gallery.html", nil)
 }
 
+// Edit Gallery Page
+func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	gallery, err := app.GalleryModel.GetByID(id)
+	if err != nil {
+		http.Error(w, "Gallery not found", http.StatusNotFound)
+		return
+	}
+
+	media, err := app.MediaModel.GetByGalleryID(id)
+	if err != nil {
+		log.Printf("❌ Error fetching media for gallery %d: %v", id, err)
+	}
+
+	data := map[string]interface{}{
+		"Title":   "Edit Gallery",
+		"Gallery": gallery,
+		"Media":   media,
+	}
+
+	app.render(w, r, "admin/edit_gallery.html", data)
+}
+
+// Update Gallery Title
+func (app *Application) UpdateGallery(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	title := r.FormValue("title")
+
+	err := app.GalleryModel.Update(id, title)
+	if err != nil {
+		http.Error(w, "Error updating gallery", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/galleries", http.StatusSeeOther)
+}
+
 // Create a New Gallery (POST)
 func (app *Application) CreateGallery(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
@@ -253,7 +291,10 @@ func (app *Application) UploadMediaForm(w http.ResponseWriter, r *http.Request) 
 
 // Upload Media File (POST)
 func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
-	r.ParseMultipartForm(10 << 20) // Max 10MB file upload
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // ✅ Parse only once
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
+	}
 
 	file, handler, err := r.FormFile("file")
 	if err != nil {
@@ -269,37 +310,24 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileName := strconv.Itoa(galleryID) + "_" + handler.Filename
-
-	// 4) Build the key that includes our "Uploads/" folder prefix
 	fileKey := "Uploads/" + fileName
 
-	// Upload to s3
+	ctx := context.Background()
 	fileSize := handler.Size
 	contentType := handler.Header.Get("Content-Type")
 
-	ctx := context.Background()
 	_, err = app.S3Client.PutObject(
-		ctx,
-		app.S3Bucket,
-		fileKey,
-		file,
-		fileSize,
+		ctx, app.S3Bucket, fileKey, file, fileSize,
 		minio.PutObjectOptions{
-			ContentType: contentType,
-			// ACL for S3-compatible services (like Vultr)
-			// This sets the file to be publicly readable
-			UserMetadata: map[string]string{
-				"x-amz-acl": "public-read",
-			},
+			ContentType:  contentType,
+			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
 		})
 
 	if err != nil {
-		log.Printf("❌ Error uploading to S3: %v", err)
 		http.Error(w, "Error uploading file", http.StatusInternalServerError)
 		return
 	}
 
-	// Construct public URL
 	fileURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
 
 	err = app.MediaModel.Insert(fileName, fileURL, galleryID)
@@ -308,10 +336,16 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/admin/media", http.StatusFound)
+	// ✅ Return partial template with new image (HTMX live update)
+	app.render(w, r, "partials/media_item.html", map[string]interface{}{
+		"ID":       galleryID,
+		"FileName": fileName,
+		"URL":      fileURL,
+	})
 }
 
 // Delete Media File (DELETE)
+
 func (app *Application) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
@@ -403,7 +437,7 @@ func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the updated cover image
+	// 🔑 Fetch the updated media record
 	media, err := app.MediaModel.GetByID(mediaID)
 	if err != nil {
 		log.Printf("❌ Cover image not found: %v", err)
@@ -411,9 +445,12 @@ func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	coverImageURL := "/uploads/" + media.FileName // Adjust based on your storage location
+	// ✅ Use the S3 URL from the `media` record
+	coverImageURL := media.URL
 
-	// ✅ Return the updated cover image partial for HTMX swap
+	// ✅ Return the updated partial to HTMX
+	//    "partials/cover_image.html" is the path to your partial.
+	//    If you're using a named block in cover_image.html, make sure to call ExecuteTemplate accordingly in your render method.
 	app.render(w, r, "partials/cover_image.html", map[string]interface{}{
 		"GalleryID":     galleryID,
 		"CoverImageURL": coverImageURL,

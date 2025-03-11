@@ -17,6 +17,23 @@
   </button>
 </form>
 
+<!-- Upload Media -->
+<h2 class="text-xl font-bold mt-6">Upload New Media</h2>
+<form
+  hx-post="/admin/media/upload"
+  hx-encoding="multipart/form-data"
+  hx-target=".sortable"
+  hx-trigger="submit"
+  onsubmit="return false;"
+>
+  <!-- ✅ Prevent default form submission -->
+  <input type="hidden" name="gallery_id" value="{{ .Gallery.ID }}" />
+  <input type="file" name="file" class="border p-2 w-full rounded" />
+  <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded mt-2">
+    Upload
+  </button>
+</form>
+
 <!-- ✅ View Toggle Buttons -->
 <div class="flex justify-between items-center mt-6">
   <h2 class="text-xl font-semibold">Reorder Images</h2>

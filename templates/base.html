@@ -15,11 +15,9 @@
     <!-- MOBILE OFF-CANVAS SIDEBAR -->
     {{ if not .HideSidebar }} {{ template "navbar" . }} {{ end }}
     <!-- MAIN CONTENT -->
-    <main class=" {{if not .HideSidebar }} py-10 lg:pl-72 {{ end }}">
-      <div class="px-4 sm:px-6 lg:px-8">
-        <!-- Your content goes here -->
-        {{ template "content" . }}
-      </div>
+    <main class=" {{if not .HideSidebar }}  lg:pl-72 {{ end }}">
+      <!-- Your content goes here -->
+      {{ template "content" . }}
     </main>
   </body>
 </html>

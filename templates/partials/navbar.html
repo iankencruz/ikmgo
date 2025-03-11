@@ -157,22 +157,36 @@
                     Galleries
                   </a>
                 </li>
+                <li>
+                  <a
+                    href="/contact"
+                    class='group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold 
+                  {{ if eq .ActiveLink "galleries" }}
+                    text-indigo-600
+                  {{ else }}
+                    text-gray-700 hover:text-indigo-600 hover:bg-gray-50
+                  {{ end }}'
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class="size-6"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                      />
+                    </svg>
+                    Contact (TBA)
+                  </a>
+                </li>
+
                 <!-- More items... -->
               </ul>
-            </li>
-            <li class="-mx-6 mt-auto">
-              <a
-                href="#"
-                class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
-              >
-                <img
-                  class="size-8 rounded-full bg-gray-50"
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-                  alt=""
-                />
-                <span class="sr-only">Your profile</span>
-                <span aria-hidden="true">Tom Cook</span>
-              </a>
             </li>
           </ul>
         </nav>
@@ -304,22 +318,35 @@
               </a>
             </li>
 
+            <li>
+              <a
+                href="/contact"
+                class='group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold 
+                  {{ if eq .ActiveLink "galleries" }}
+                    text-indigo-600
+                  {{ else }}
+                    text-gray-700 hover:text-indigo-600 hover:bg-gray-50
+                  {{ end }}'
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-6"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                  />
+                </svg>
+                Contact (TBA)
+              </a>
+            </li>
             <!-- More items... -->
           </ul>
-        </li>
-        <li class="-mx-6 mt-auto">
-          <a
-            href="#"
-            class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
-          >
-            <img
-              class="size-8 rounded-full bg-gray-50"
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-              alt=""
-            />
-            <span class="sr-only">Your profile</span>
-            <span aria-hidden="true">Tom Cook</span>
-          </a>
         </li>
       </ul>
     </nav>
@@ -352,15 +379,6 @@
       />
     </svg>
   </button>
-  <div class="flex-1 text-sm/6 font-semibold text-gray-900">Dashboard</div>
-  <a href="#">
-    <span class="sr-only">Your profile</span>
-    <img
-      class="size-8 rounded-full bg-gray-50"
-      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-      alt=""
-    />
-  </a>
 </div>
 
 {{ end }}

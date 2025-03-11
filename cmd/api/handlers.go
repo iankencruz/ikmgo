@@ -15,14 +15,15 @@ import (
 
 // Home Page Handler
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
-	featuredGallery, images, err := app.GalleryModel.GetFeatured()
+	gallery, images, err := app.GalleryModel.GetByTitle("Japan")
 	if err != nil {
 		log.Printf("❌ Error fetching featured gallery: %v", err)
 	}
 	app.render(w, r, "index.html", map[string]interface{}{
-		"Title":           "Home",
-		"FeaturedGallery": featuredGallery,
-		"Images":          images,
+		"Title":   "Home",
+		"Gallery": gallery,
+		"Masonry": false,
+		"Images":  images,
 	})
 }
 

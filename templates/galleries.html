@@ -1,23 +1,25 @@
 {{ define "content" }}
-<h1 class="text-2xl font-bold">All Galleries</h1>
+<div class="px-4 sm:px-6 lg:px-8">
+  <h1 class="text-2xl font-bold">All Galleries</h1>
 
-<div class="grid grid-cols-3 gap-6 mt-6">
-  {{ range .Galleries }}
-  <div class="border p-4 shadow-lg rounded-lg">
-    <a href="/gallery/{{ .ID }}">
-      {{ if .CoverImageURL }}
-      <img
-        src="{{ .CoverImageURL }}"
-        class="w-full h-48 object-cover rounded"
-      />
-      {{ else }}
-      <div class="w-full h-48 bg-gray-200 flex items-center justify-center">
-        <span class="text-gray-500">No Cover Image</span>
-      </div>
-      {{ end }}
-      <h2 class="text-lg font-semibold mt-2">{{ .Title }}</h2>
-    </a>
+  <div class="grid grid-cols-3 gap-6 mt-6">
+    {{ range .Galleries }}
+    <div class="border p-4 shadow-lg rounded-lg">
+      <a href="/gallery/{{ .ID }}">
+        {{ if .CoverImageURL }}
+        <img
+          src="{{ .CoverImageURL }}"
+          class="w-full h-48 object-cover rounded"
+        />
+        {{ else }}
+        <div class="w-full h-48 bg-gray-200 flex items-center justify-center">
+          <span class="text-gray-500">No Cover Image</span>
+        </div>
+        {{ end }}
+        <h2 class="text-lg font-semibold mt-2">{{ .Title }}</h2>
+      </a>
+    </div>
+    {{ end }}
   </div>
-  {{ end }}
 </div>
 {{ end }}

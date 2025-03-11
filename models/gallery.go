@@ -20,6 +20,40 @@ type GalleryModel struct {
 	DB *pgxpool.Pool
 }
 
+// GetByTitle retrieves a single gallery by its title
+func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
+	var gallery Gallery
+
+	// Fetch the featured gallery
+	err := g.DB.QueryRow(context.Background(),
+		"SELECT id, title FROM galleries WHERE title=$1", title).
+		Scan(&gallery.ID, &gallery.Title)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Fetch associated images including their URL
+	rows, err := g.DB.Query(context.Background(),
+		"SELECT id, file_name, url FROM media WHERE gallery_id = $1 ORDER BY id DESC", gallery.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	var images []*Media
+	for rows.Next() {
+		var media Media
+		err := rows.Scan(&media.ID, &media.FileName, &media.URL) // ✅ Fetch media URL
+		if err != nil {
+			return nil, nil, err
+		}
+		images = append(images, &media)
+	}
+
+	return &gallery, images, nil
+}
+
 // GetFeatured retrieves the gallery marked as featured
 func (g *GalleryModel) GetFeatured() (*Gallery, []*Media, error) {
 	var gallery Gallery

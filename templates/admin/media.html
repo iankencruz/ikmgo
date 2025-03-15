@@ -1,25 +1,63 @@
 {{ define "content" }}
-<div class="flex flex-row justify-between">
-  <h1 class="text-2xl font-bold">Media</h1>
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">Media</h1>
+      <p class="mt-1 text-sm text-gray-600">
+        Manage your uploaded media files, including previews, filenames, and
+        gallery associations.
+      </p>
+    </div>
+    <div class="mt-4 sm:mt-0">
+      <a
+        href="/admin/media/upload"
+        class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      >
+        Upload Media
+      </a>
+    </div>
+  </div>
 
-  <a href="/admin/media/upload" class="px-4 py-2 bg-blue-500 text-white rounded"
-    >Upload Media</a
-  >
+  <div class="mt-6 flow-root">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-300">
+        <thead class="bg-gray-50">
+          <tr>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              ID
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Preview
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              File Name
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Gallery
+            </th>
+            <th scope="col" class="relative py-3.5 pl-3">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="media-list" class="divide-y divide-gray-200 bg-white">
+          {{ range .Media }} {{ template "partials/media_item.html" . }} {{ end
+          }}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
-
-<!-- HTMX will insert new media items here -->
-<table class="w-full mt-4 border-collapse border border-gray-300">
-  <thead>
-    <tr class="bg-gray-200">
-      <th class="border border-gray-300 px-4 py-2">ID</th>
-      <th class="border border-gray-300 px-4 py-2">Preview</th>
-      <th class="border border-gray-300 px-4 py-2">File Name</th>
-      <th class="border border-gray-300 px-4 py-2">Gallery</th>
-      <th class="border border-gray-300 px-4 py-2">Actions</th>
-    </tr>
-  </thead>
-  <tbody id="media-list">
-    {{ range .Media }} {{ template "partials/media_item.html" . }} {{ end }}
-  </tbody>
-</table>
 {{ end }}

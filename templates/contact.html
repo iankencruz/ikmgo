@@ -1,5 +1,142 @@
 {{ define "content" }}
-<h1>Contact Me</h1>
-<p>Email: contact@example.com</p>
-<p>Phone: +123456789</p>
+<!-- Must include HTMX somewhere before form is used -->
+<script src="https://unpkg.com/htmx.org@1.9.6"></script>
+
+<!-- Load reCAPTCHA v3 script with your site key -->
+<script src="https://www.google.com/recaptcha/api.js?render=6Ldh3fEqAAAAAJgLcZAj854loLXuZePJ4yt4ai9x"></script>
+
+<div class="max-w-3xl mx-auto px-6 py-16 sm:px-8 lg:px-12 flex flex-col">
+  <h2 class="text-3xl font-extrabold text-gray-900">Contact</h2>
+
+  <div class="mt-12 w-full flex flex-col items-center">
+    <div class="w-full bg-white p-8 shadow-lg border border-gray-200">
+      <!-- 
+         1) No action/method; we rely on HTMX.
+         2) hx-post => where to send data
+         3) hx-trigger="verified" => custom event that triggers HTMX submission
+      -->
+      <form
+        id="contact-form"
+        hx-post="/contact"
+        hx-target="body"
+        hx-swap="afterbegin"
+        hx-trigger="verified"
+      >
+        <div class="grid grid-cols-12 gap-x-2">
+          <div class="col-span-6">
+            <label class="block text-left text-sm font-medium text-gray-700"
+              >First Name</label
+            >
+            <input
+              type="text"
+              name="first_name"
+              class="mt-2 block w-full px-4 py-3 border border-gray-300 shadow-sm focus:ring-gray-900 focus:border-gray-900 text-gray-900 text-lg"
+              required
+            />
+          </div>
+          <div class="col-span-6">
+            <label class="block text-left text-sm font-medium text-gray-700"
+              >Last Name</label
+            >
+            <input
+              type="text"
+              name="last_name"
+              class="mt-2 block w-full px-4 py-3 border border-gray-300 shadow-sm focus:ring-gray-900 focus:border-gray-900 text-gray-900 text-lg"
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-left text-sm font-medium text-gray-700"
+            >Email</label
+          >
+          <input
+            type="email"
+            name="email"
+            class="mt-2 block w-full px-4 py-3 border border-gray-300 shadow-sm focus:ring-gray-900 focus:border-gray-900 text-gray-900 text-lg"
+            placeholder="Enter your email"
+            required
+          />
+        </div>
+        <div>
+          <label class="block text-left text-sm font-medium text-gray-700"
+            >Subject</label
+          >
+          <input
+            type="text"
+            name="subject"
+            class="mt-2 block w-full px-4 py-3 border border-gray-300 shadow-sm focus:ring-gray-900 focus:border-gray-900 text-gray-900 text-lg"
+            placeholder="Enter your email"
+            required
+          />
+        </div>
+        <div>
+          <label class="block text-left text-sm font-medium text-gray-700"
+            >Message</label
+          >
+          <textarea
+            name="message"
+            rows="5"
+            class="mt-2 block w-full px-4 py-3 border border-gray-300 shadow-sm focus:ring-gray-900 focus:border-gray-900 text-gray-900 text-lg"
+            placeholder="Write your message here"
+            required
+          ></textarea>
+        </div>
+        <!-- 
+          Hidden field where we store the v3 token.
+          On the server, read it via r.FormValue("g-recaptcha-response"). 
+        -->
+        <input
+          type="hidden"
+          name="g-recaptcha-response"
+          id="g-recaptcha-response"
+        />
+
+        <!-- 
+          Type=\"button\" so it doesn't do a normal submit. 
+          We'll call grecaptcha.execute() -> dispatch the \"verified\" event => triggers HTMX 
+        -->
+        <button
+          type="button"
+          onclick="runRecaptcha()"
+          class="w-full bg-indigo-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+        >
+          Send Message
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Manually run reCAPTCHA and dispatch 'verified' for HTMX
+  function runRecaptcha() {
+    console.log("🚀 Starting reCAPTCHA v3...");
+
+    // Ensure the script is loaded & domain is valid
+    grecaptcha.ready(function () {
+      grecaptcha
+        .execute("6Ldh3fEqAAAAAJgLcZAj854loLXuZePJ4yt4ai9x", {
+          action: "submit",
+        })
+        .then(function (token) {
+          if (!token) {
+            console.error("❌ reCAPTCHA token is empty");
+            alert("Failed to verify reCAPTCHA. Please refresh and try again.");
+            return;
+          }
+          console.log("✅ Got reCAPTCHA token:", token);
+
+          // Insert the token into the hidden input
+          document.getElementById("g-recaptcha-response").value = token;
+
+          // Dispatch the custom \"verified\" event
+          // HTMX sees hx-trigger=\"verified\" on the form and submits
+          const event = new Event("verified");
+          document.getElementById("contact-form").dispatchEvent(event);
+        });
+    });
+  }
+</script>
 {{ end }}

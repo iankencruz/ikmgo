@@ -1,0 +1,44 @@
+{{ define "gallery_component" }}
+<div id="gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
+  {{ range .Media }}
+  <div class="relative aspect-square hover:bg-black/50 flex">
+    <img
+      src="{{ .URL }}"
+      data-large="{{ .URL }}"
+      alt="{{ .FileName }}"
+      class="absolute inset-0 w-full h-full object-cover cursor-pointer"
+      loading="lazy"
+    />
+  </div>
+  {{ end }}
+</div>
+
+<div
+  id="lightboxModal"
+  class="fixed inset-0 flex items-center justify-center bg-black/80 hidden z-50"
+>
+  <button
+    id="lightboxClose"
+    class="absolute top-4 right-8 text-white text-3xl font-bold px-2"
+  >
+    &times;
+  </button>
+  <button
+    id="lightboxPrev"
+    class="absolute left-4 text-white text-3xl font-bold px-2"
+  >
+    &#10094;
+  </button>
+  <button
+    id="lightboxNext"
+    class="absolute right-4 text-white text-3xl font-bold px-2"
+  >
+    &#10095;
+  </button>
+  <img
+    id="lightboxImg"
+    alt="Lightbox Image"
+    class="max-h-[80vh] max-w-[90vw] mx-auto"
+  />
+</div>
+{{ end }}

@@ -1,97 +1,144 @@
 {{ define "content" }}
-<div class="flex flex-row justify-between">
-  <h1 class="text-2xl font-bold">Galleries</h1>
-  <a
-    href="/admin/gallery/create"
-    class="px-4 py-2 bg-blue-500 text-white rounded"
-    >Create New Gallery</a
-  >
-</div>
+<div class="mx-auto max-w-7xl">
+  <div class="sm:flex sm:items-center justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">Galleries</h1>
+      <p class="mt-1 text-sm text-gray-600">
+        Manage all your galleries, including cover images, visibility, and
+        media.
+      </p>
+    </div>
+    <div class="mt-4 sm:mt-0">
+      <a
+        href="/admin/gallery/create"
+        class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      >
+        Create New Gallery
+      </a>
+    </div>
+  </div>
 
-<table class="w-full mt-4 border-collapse border border-gray-300">
-  <thead>
-    <tr class="bg-gray-200">
-      <th class="border border-gray-300 px-4 py-2">ID</th>
-      <th class="border border-gray-300 px-4 py-2">Cover Image</th>
-      <!-- ✅ New column -->
-      <th class="border border-gray-300 px-4 py-2">Title</th>
-      <th class="border border-gray-300 px-4 py-2">Media Count</th>
-      <th class="border border-gray-300 px-4 py-2">Publish</th>
-      <!-- ✅ Separate column -->
-      <th class="border border-gray-300 px-4 py-2">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{ range .Galleries }}
-    <tr>
-      <td class="border border-gray-300 px-4 py-2">{{ .ID }}</td>
-
-      <td class="border border-gray-300 px-4 py-2">
-        <div class="flex items-center gap-2">
-          <!-- ✅ Cover image container that HTMX will update -->
-          <div id="cover-{{ .ID }}">
-            {{ if .CoverImageURL }}
-            <img
-              src="{{ .CoverImageURL }}"
-              class="w-16 h-16 object-cover rounded"
-            />
-            {{ else }}
-            <div
-              class="w-16 h-16 bg-gray-200 flex items-center justify-center rounded"
+  <div class="mt-6 flow-root">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-300">
+        <thead class="">
+          <tr>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
             >
-              <span class="text-gray-500 text-xs">No Cover</span>
-            </div>
-            {{ end }}
-          </div>
+              ID
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Cover Image
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Title
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Media Count
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Publish
+            </th>
+            <th scope="col" class="relative py-3.5 pl-3">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          {{ range .Galleries }}
+          <tr>
+            <td class="px-3 py-4 text-sm text-gray-500">{{ .ID }}</td>
 
-          <!-- ✅ Ensure HTMX triggers when selecting a new image -->
-          <select
-            class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            hx-post="/admin/gallery/{{ .ID }}/cover"
-            hx-trigger="change"
-            hx-target="#cover-{{ .ID }}"
-            hx-swap="outerHTML"
-            name="media_id"
-          >
-            <option value="">Select Cover Image</option>
-            {{ range index $.GalleryMedia .ID }}
-            <option value="{{ .ID }}">{{ .FileName }}</option>
-            {{ end }}
-          </select>
-        </div>
-      </td>
+            <td class="px-3 py-4">
+              <div class="flex items-center gap-3">
+                <div id="cover-{{ .ID }}" class="h-16 w-16 flex-shrink-0">
+                  {{ if .CoverImageURL }}
+                  <img
+                    src="{{ .CoverImageURL }}"
+                    class="h-16 w-16 object-cover rounded"
+                  />
+                  {{ else }}
+                  <div
+                    class="h-16 w-16 bg-gray-200 flex items-center justify-center rounded"
+                  >
+                    <span class="text-gray-500 text-xs">No Cover</span>
+                  </div>
+                  {{ end }}
+                </div>
+                <select
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  hx-post="/admin/gallery/{{ .ID }}/cover"
+                  hx-trigger="change"
+                  hx-target="#cover-{{ .ID }}"
+                  hx-swap="outerHTML"
+                  name="media_id"
+                >
+                  <option value="">Select Cover Image</option>
+                  {{ range index $.GalleryMedia .ID }}
+                  <option value="{{ .ID }}">{{ .FileName }}</option>
+                  {{ end }}
+                </select>
+              </div>
+            </td>
 
-      <td class="border border-gray-300 px-4 py-2">{{ .Title }}</td>
-      <td class="border border-gray-300 px-4 py-2">{{ .MediaCount }} Images</td>
-      <td class="border border-gray-300 px-4 py-2">
-        <input
-          type="checkbox"
-          name="published"
-          {{
-          if
-          .Published
-          }}checked{{
-          end
-          }}
-          hx-post="/admin/gallery/{{ .ID }}/publish"
-          hx-trigger="change"
-          hx-swap="none"
-        />
-      </td>
-      <td class="border border-gray-300 px-4 py-2">
-        <a href="/admin/gallery/edit/{{ .ID }}" class="text-blue-500">Edit</a> |
-        <button
-          hx-delete="/admin/gallery/{{ .ID }}"
-          hx-confirm="Are you sure?"
-          hx-target="#gallery-{{ .ID }}"
-          hx-swap="outerHTML"
-          class="text-red-500"
-        >
-          Delete
-        </button>
-      </td>
-    </tr>
-    {{ end }}
-  </tbody>
-</table>
+            <td class="px-3 py-4 text-sm font-medium text-gray-900">
+              {{ .Title }}
+            </td>
+            <td class="px-3 py-4 text-sm text-gray-500">
+              {{ .MediaCount }} Images
+            </td>
+            <td class="px-3 py-4">
+              <input
+                type="checkbox"
+                name="published"
+                {{
+                if
+                .Published
+                }}checked{{
+                end
+                }}
+                hx-post="/admin/gallery/{{ .ID }}/publish"
+                hx-trigger="change"
+                hx-swap="none"
+                class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+            </td>
+            <td class="px-3 py-4 text-right text-sm font-medium">
+              <a
+                href="/admin/gallery/edit/{{ .ID }}"
+                class="text-indigo-600 hover:text-indigo-900"
+                >Edit</a
+              >
+              |
+              <button
+                hx-delete="/admin/gallery/{{ .ID }}"
+                hx-confirm="Are you sure?"
+                hx-target="closest tr"
+                hx-swap="outerHTML"
+                class="text-red-600 hover:text-red-900"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 {{ end }}

@@ -1,9 +1,6 @@
 {{ define "content" }}
-<h1>{{ .Gallery.Title }}</h1>
-
-<div id="media-list">
-  {{ range .Media }} {{ template "partials/media_item.html" . }} {{ end }}
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold mb-6">{{ .Gallery.Title }}</h1>
+  {{ template "gallery_component" . }}
 </div>
-
-<!-- HTMX-powered Upload Form -->
-{{ template "partials/upload_form.html" . }} {{ end }}
+{{ end }}

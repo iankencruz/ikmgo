@@ -1,35 +1,77 @@
 {{ define "content" }}
-<h1 class="text-2xl font-bold">Users</h1>
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">Users</h1>
+      <p class="mt-1 text-sm text-gray-600">
+        Manage all registered users, including their names, email, and actions.
+      </p>
+    </div>
+  </div>
 
-<table class="w-full mt-4 border-collapse border border-gray-300">
-  <thead>
-    <tr class="bg-gray-200">
-      <th class="border border-gray-300 px-4 py-2">ID</th>
-      <th class="border border-gray-300 px-4 py-2">First Name</th>
-      <th class="border border-gray-300 px-4 py-2">Last Name</th>
-      <th class="border border-gray-300 px-4 py-2">Email</th>
-      <th class="border border-gray-300 px-4 py-2">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{ range .Users }}
-    <tr>
-      <td class="border border-gray-300 px-4 py-2">{{ .ID }}</td>
-      <td class="border border-gray-300 px-4 py-2">{{ .FirstName }}</td>
-      <td class="border border-gray-300 px-4 py-2">{{ .LastName }}</td>
-      <td class="border border-gray-300 px-4 py-2">{{ .Email }}</td>
-      <td class="border border-gray-300 px-4 py-2">
-        <a href="/admin/users/edit/{{ .ID }}" class="text-blue-500">Edit</a> |
-        <button
-          hx-post="/admin/users/delete/{{ .ID }}"
-          hx-confirm="Are you sure?"
-          class="text-red-500"
-        >
-          Delete
-        </button>
-      </td>
-    </tr>
-    {{ end }}
-  </tbody>
-</table>
+  <div class="mt-6 flow-root">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-300">
+        <thead class="bg-gray-50">
+          <tr>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              ID
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              First Name
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Last Name
+            </th>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Email
+            </th>
+            <th scope="col" class="relative py-3.5 pl-3">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          {{ range .Users }}
+          <tr>
+            <td class="px-3 py-4 text-sm text-gray-500">{{ .ID }}</td>
+            <td class="px-3 py-4 text-sm font-medium text-gray-900">
+              {{ .FirstName }}
+            </td>
+            <td class="px-3 py-4 text-sm text-gray-900">{{ .LastName }}</td>
+            <td class="px-3 py-4 text-sm text-gray-500">{{ .Email }}</td>
+            <td class="px-3 py-4 text-right text-sm font-medium">
+              <a
+                href="/admin/users/edit/{{ .ID }}"
+                class="text-indigo-600 hover:text-indigo-900"
+                >Edit</a
+              >
+              |
+              <button
+                hx-post="/admin/users/delete/{{ .ID }}"
+                hx-confirm="Are you sure?"
+                class="text-red-600 hover:text-red-900"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 {{ end }}

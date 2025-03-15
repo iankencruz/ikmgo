@@ -19,6 +19,7 @@ type Application struct {
 	UserModel    *models.UserModel
 	GalleryModel *models.GalleryModel
 	MediaModel   *models.MediaModel
+	ContactModel *models.ContactModel
 
 	// S3 configuration
 	S3Client *minio.Client
@@ -104,8 +105,10 @@ func main() {
 		UserModel:    &models.UserModel{DB: dbPool},
 		GalleryModel: &models.GalleryModel{DB: dbPool},
 		MediaModel:   &models.MediaModel{DB: dbPool},
-		S3Client:     s3Client,
-		S3Bucket:     s3Bucket,
+		ContactModel: &models.ContactModel{DB: dbPool},
+
+		S3Client: s3Client,
+		S3Bucket: s3Bucket,
 	}
 
 	// DebugRoutes(app.routes())

@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"ikm/models"
+	"ikm/utils"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -15,15 +19,16 @@ import (
 
 // Home Page Handler
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
-	gallery, images, err := app.GalleryModel.GetByTitle("Japan")
+	gallery, media, err := app.GalleryModel.GetByTitle("Japan")
 	if err != nil {
 		log.Printf("❌ Error fetching featured gallery: %v", err)
 	}
 	app.render(w, r, "index.html", map[string]interface{}{
-		"Title":   "Home",
-		"Gallery": gallery,
-		"Masonry": false,
-		"Images":  images,
+		"Title":      "Home",
+		"Gallery":    gallery,
+		"Masonry":    true,
+		"Media":      media,
+		"ActiveLink": "home",
 	})
 }
 
@@ -135,6 +140,7 @@ func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
 		"Title":        "Manage Galleries",
 		"Galleries":    galleries,    // ✅ Passes proper `[]map[string]interface{}` slice
 		"GalleryMedia": galleryMedia, // ✅ Ensures media is available per gallery
+		"ActiveLink":   "galleries",
 	}
 
 	app.render(w, r, "admin/galleries.html", data)
@@ -223,6 +229,23 @@ func (app *Application) AdminUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.render(w, r, "admin/users.html", data)
+}
+
+func (app *Application) AdminContacts(w http.ResponseWriter, r *http.Request) {
+	contacts, err := app.ContactModel.GetAll()
+	if err != nil {
+		log.Printf("❌ Error fetching contacts: %v", err)
+		http.Error(w, "Error fetching contacts", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":      "Manage Contacts",
+		"Contacts":   contacts,
+		"ActiveLink": "contacts",
+	}
+
+	app.render(w, r, "admin/contacts.html", data)
 }
 
 func (app *Application) EditUserForm(w http.ResponseWriter, r *http.Request) {
@@ -377,15 +400,101 @@ func (app *Application) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 // About Page Handler
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
 	app.render(w, r, "about.html", map[string]interface{}{
-		"Title": "About Me",
+		"Title":      "About Me",
+		"ActiveLink": "about",
 	})
 }
 
-// Contact Page Handler
+// Email sending utility
+// func (app *Application) sendMail(from, to, subject, body string) error {
+// 	smtpHost := os.Getenv("SMTP_HOST")
+// 	smtpPort := os.Getenv("SMTP_PORT")
+// 	smtpUser := os.Getenv("SMTP_USER")
+// 	smtpPass := os.Getenv("SMTP_PASS")
+//
+// 	msg := []byte(fmt.Sprintf("Subject: %s\r\nFrom: %s\r\nTo: %s\r\n\r\n%s",
+// 		subject, from, to, body))
+//
+// 	auth := smtp.PlainAuth("", smtpUser, smtpPass, smtpHost)
+// 	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
+//
+// 	return smtp.SendMail(addr, auth, from, []string{to}, msg)
+// }
+
+// Contact Handler (GET + POST)
+
 func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
-	app.render(w, r, "contact.html", map[string]interface{}{
-		"Title": "Contact Me",
-	})
+	// 1. Handle GET request - show contact form
+	if r.Method == http.MethodGet {
+		app.render(w, r, "contact.html", map[string]interface{}{
+			"Title": "Contact",
+		})
+		return
+	}
+
+	// 2. Parse POST form
+	if err := r.ParseForm(); err != nil {
+		log.Printf("❌ Failed to parse contact form: %v", err)
+		http.Error(w, "Unable to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// 3. Populate ContactForm struct
+	form := models.ContactForm{
+		FirstName:      r.FormValue("first_name"),
+		LastName:       r.FormValue("last_name"),
+		Email:          r.FormValue("email"),
+		Subject:        r.FormValue("subject"),
+		Message:        r.FormValue("message"),
+		RecaptchaToken: r.FormValue("g-recaptcha-response"),
+	}
+	log.Printf("🔍 Form submission: %+v", form)
+
+	// 4. Validate form fields
+	if err := utils.ValidateStruct(&form); err != nil {
+		log.Printf("❌ Contact form validation failed: %v", err)
+		app.render(w, r, "contact.html", map[string]interface{}{
+			"Title":  "Contact",
+			"Errors": err,
+			"Form":   form,
+		})
+		return
+	}
+
+	// 5. Verify reCAPTCHA
+	if !verifyRecaptcha(form.RecaptchaToken, os.Getenv("RECAPTCHA_SECRET")) {
+		log.Printf("❌ reCAPTCHA verification failed for email: %s", form.Email)
+		http.Error(w, "reCAPTCHA verification failed", http.StatusForbidden)
+		return
+	}
+
+	// 6. Save contact info to DB
+	if err := app.ContactModel.Insert(form.FirstName, form.LastName, form.Email, form.Subject, form.Message); err != nil {
+		log.Printf("❌ Error saving contact form submission: %v", err)
+		http.Error(w, "Failed to save message", http.StatusInternalServerError)
+		return
+	}
+	fmt.Println("Insert success. starting SendEmail method")
+
+	// 7. Send email with Gomail via utils.SendEmail
+	err := utils.SendEmail(
+		os.Getenv("CONTACT_EMAIL"),              // From
+		os.Getenv("CONTACT_EMAIL"),              // To
+		form.Subject,                            // Subject
+		"./templates/emails/contact_email.html", // Template path
+		form,                                    // Data for template
+	)
+	if err != nil {
+		log.Printf("❌ Email sending failed: %v", err)
+		http.Error(w, "Failed to send email notification", http.StatusInternalServerError)
+		return
+	}
+
+	// 8. Everything succeeded
+	log.Printf("✅ Contact form submitted successfully by %s %s (%s)", form.FirstName, form.LastName, form.Email)
+
+	app.render(w, r, "partials/contact_success_modal.html", nil) // ✅ Correct
+
 }
 
 // Get All Galleries
@@ -396,12 +505,14 @@ func (app *Application) Galleries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.render(w, r, "galleries.html", map[string]interface{}{
-		"Title":     "Galleries",
-		"Galleries": galleries,
+		"Title":      "Galleries",
+		"Galleries":  galleries,
+		"ActiveLink": "galleries",
 	})
 }
 
 // View Gallery Page
+
 func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	gallery, _ := app.GalleryModel.GetByID(id)
@@ -535,4 +646,51 @@ func (app *Application) UpdateMediaOrder(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK) // ✅ Success response
+}
+
+// Helper function to verify recaptcha
+
+func verifyRecaptcha(token, secret string) bool {
+	resp, err := http.PostForm("https://www.google.com/recaptcha/api/siteverify",
+		url.Values{
+			"secret":   {secret},
+			"response": {token},
+		},
+	)
+
+	if err != nil {
+		log.Printf("❌ reCAPTCHA request failed: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Success    bool     `json:"success"`
+		Score      float64  `json:"score"`
+		Action     string   `json:"action"`
+		Hostname   string   `json:"hostname"`
+		ErrorCodes []string `json:"error-codes"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("❌ Failed to parse reCAPTCHA response: %v", err)
+		return false
+	}
+
+	// Log the full reCAPTCHA response for debugging
+	log.Printf("🔍 reCAPTCHA Response: %+v", result)
+
+	// If verification failed, log errors
+	if !result.Success {
+		log.Printf("❌ reCAPTCHA verification failed: %v", result.ErrorCodes)
+		return false
+	}
+
+	// Require a minimum score to prevent spam bots
+	if result.Score < 0.5 {
+		log.Printf("⚠️ Low reCAPTCHA score (%f) - possible bot", result.Score)
+		return false
+	}
+
+	return true
 }

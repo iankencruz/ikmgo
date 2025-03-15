@@ -1,26 +1,24 @@
 {{ define "partials/media_item.html" }}
 <tr id="media-{{ .ID }}">
-  <td class="border border-gray-300 px-4 py-2 text-center">{{ .ID }}</td>
-  <td class="border border-gray-300 px-4 py-2 text-center">
-    <a href="{{.URL}}"
-      ><img
+  <td class="px-3 py-4 text-sm text-gray-500 text-center">{{ .ID }}</td>
+  <td class="px-3 py-4 text-center">
+    <a href="{{ .URL }}" target="_blank" class="block">
+      <img
         src="{{ .URL }}"
         alt="Uploaded media"
-        class="max-h-40 w-full object-cover"
-    /></a>
+        class="h-20 w-32 object-cover rounded border border-gray-300 shadow-sm"
+      />
+    </a>
   </td>
-  <td class="border border-gray-300 px-4 py-2 text-center">{{ .FileName }}</td>
-  <td class="border border-gray-300 px-4 py-2 text-center">
-    {{ .GalleryTitle }}
-  </td>
-  <!-- ✅ Uses dynamic SQL JOIN -->
-  <td class="border border-gray-300 px-4 py-2">
+  <td class="px-3 py-4 text-sm text-gray-700">{{ .FileName }}</td>
+  <td class="px-3 py-4 text-sm text-gray-500">{{ .GalleryTitle }}</td>
+  <td class="px-3 py-4 text-right text-sm font-medium">
     <button
       hx-delete="/admin/media/{{ .ID }}"
       hx-target="#media-{{ .ID }}"
       hx-swap="outerHTML"
       hx-confirm="Are you sure?"
-      class="text-red-500"
+      class="text-red-600 hover:text-red-900"
     >
       Delete
     </button>

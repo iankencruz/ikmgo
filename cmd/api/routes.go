@@ -32,6 +32,9 @@ func (app *Application) routes() http.Handler {
 	r.Post("/logout", app.Logout)
 	r.Get("/register", app.Register)
 	r.Post("/register", app.Register)
+	// Contacts
+	r.Get("/contact", app.Contact)
+	r.Post("/contact", app.Contact)
 
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
@@ -45,6 +48,7 @@ func (app *Application) routes() http.Handler {
 
 		// Galleries
 		r.Get("/galleries", app.AdminGalleries)
+		r.Get("/gallery/{id}", app.GalleryView)
 		r.Get("/gallery/create", app.CreateGalleryForm)
 		r.Post("/gallery/create", app.CreateGallery)
 		r.Delete("/gallery/{id}", app.DeleteGallery)
@@ -67,6 +71,9 @@ func (app *Application) routes() http.Handler {
 		r.Post("/media/upload", app.UploadMedia)
 		r.Delete("/media/{id}", app.DeleteMedia)
 		r.Post("/media/update-order", app.UpdateMediaOrder)
+
+		// Contacts
+		r.Get("/contacts", app.AdminContacts)
 
 	})
 

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -79,7 +81,7 @@ func LoadTemplates() error {
 		// Extract filename without path
 		templateName := strings.TrimPrefix(tmplPath, basePath)
 		TemplateCache[templateName] = t
-		log.Printf("✅ Loaded template: %s", templateName)
+		log.Printf("✅ Cached partial: %s", templateName)
 	}
 
 	return nil
@@ -88,18 +90,35 @@ func LoadTemplates() error {
 // Render function to display templates
 
 func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl string, data map[string]interface{}) {
+	// Ensure template cache is properly populated
+	if TemplateCache == nil {
+		TemplateCache = make(map[string]*template.Template)
+	}
+
+	// Check if the template is already in cache
 	t, ok := TemplateCache[tmpl]
 	if !ok {
-		log.Printf("❌ Template not found in cache: %s", tmpl)
-		http.Error(w, "Template not found", http.StatusInternalServerError)
-		return
+		// If not found, reload all templates and attempt again
+		err := LoadTemplates()
+		if err != nil {
+			log.Printf("❌ Error loading templates: %v", err)
+			http.Error(w, "Error loading templates", http.StatusInternalServerError)
+			return
+		}
+
+		t, ok = TemplateCache[tmpl]
+		if !ok {
+			log.Printf("❌ Template still not found in cache: %s", tmpl)
+			http.Error(w, "Template not found", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if data == nil {
 		data = make(map[string]interface{})
 	}
 
-	// Optionally, pass the logged-in user (if any).
+	// Optionally, pass the logged-in user (if any)
 	userID, _ := GetSession(r)
 	if userID > 0 {
 		user, err := app.UserModel.GetUserByID(userID)
@@ -110,12 +129,18 @@ func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl stri
 
 	var err error
 
-	// For partials in "partials/" we use ExecuteTemplate with the name from `define "..."`.
+	// Load settings
+	settings, err := app.SettingsModel.GetAll()
+	if err == nil {
+		data["Settings"] = settings
+	}
+
+	// Determine if this is a partial and extract the template name
 	if strings.HasPrefix(tmpl, "partials/") {
-		// "cover_image" is the define name we used in cover_image.html
-		err = t.ExecuteTemplate(w, "cover_image", data)
+		// partialName := strings.TrimPrefix(tmpl, "partials/")
+		err = t.ExecuteTemplate(w, tmpl, data)
 	} else {
-		// For full-page templates, just render the entire file normally
+		// Full-page template rendering
 		err = t.Execute(w, data)
 	}
 
@@ -123,4 +148,27 @@ func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl stri
 		log.Printf("❌ Error executing template %s: %v", tmpl, err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
+}
+
+func (app *Application) renderToWriter(w io.Writer, r *http.Request, tmpl string, data map[string]interface{}) error {
+	t, ok := TemplateCache[tmpl]
+	if !ok {
+		return fmt.Errorf("template not found in cache: %s", tmpl)
+	}
+
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	// Optionally include the logged-in user if session is active
+	userID, _ := GetSession(r)
+	if userID > 0 {
+		user, err := app.UserModel.GetUserByID(userID)
+		if err == nil {
+			data["User"] = user
+		}
+	}
+
+	return t.ExecuteTemplate(w, tmpl, data)
+
 }

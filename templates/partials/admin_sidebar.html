@@ -41,16 +41,12 @@
       <div class="flex grow flex-col gap-y-5 overflow-y-auto px-6 pb-2 pt-6">
         <!-- Logo -->
         <div class="flex h-16 shrink-0 items-center">
-          <img
-            class="h-8 w-auto"
-            src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
-            alt="Your Company"
-          />
+          <h2><a href="/admin/dashboard">IKM</a></h2>
         </div>
 
         <!-- NAV -->
         <nav class="flex flex-1 flex-col">
-          <ul role="list" class="flex flex-1 flex-col gap-y-7">
+          <ul role="list" class="flex justify-between flex-1 flex-col gap-y-7">
             <li>
               <ul role="list" class="-mx-2 space-y-1">
                 <li>
@@ -102,23 +98,22 @@
                     {{ end }}'
                   >
                     <svg
-                      class='size-6 shrink-0 
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class='size-6 shrink-0
                       {{ if eq .ActiveLink "users" }}
                         text-indigo-600
                       {{ else }}
                         text-gray-700 hover:text-indigo-600 hover:bg-gray-50
                       {{ end }}'
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                      data-slot="icon"
                     >
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+                        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
                       />
                     </svg>
                     Users
@@ -217,7 +212,7 @@
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"
+                        d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
                       />
                     </svg>
                     Contacts
@@ -226,20 +221,30 @@
                 <!-- More items... -->
               </ul>
             </li>
-            <li class="-mx-6 mt-auto">
-              <a
-                href="#"
-                class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
-              >
-                <img
-                  class="size-8 rounded-full bg-gray-50"
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-                  alt=""
-                />
-                <span class="sr-only">Your profile</span>
-                <span aria-hidden="true">Tom Cook</span>
-              </a>
-            </li>
+            <div class="w-full pb-8">
+              <li class="mt-auto w-full">
+                <button
+                  type="button"
+                  hx-get="/admin/settings"
+                  hx-swap="outerHTML"
+                  hx-target="body"
+                  class="flex items-center w-full gap-x-4 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
+                >
+                  Settings
+                </button>
+              </li>
+              <li class="mt-auto">
+                <button
+                  type="button"
+                  class="flex items-center w-full gap-x-4 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
+                  hx-post="/logout"
+                  hx-swap="outerHTML"
+                  hx-target="body"
+                >
+                  Logout
+                </button>
+              </li>
+            </div>
           </ul>
         </nav>
       </div>
@@ -254,14 +259,10 @@
   >
     <!-- Logo -->
     <div class="flex h-16 shrink-0 items-center">
-      <img
-        class="h-8 w-auto"
-        src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
-        alt="Your Company"
-      />
+      <h2><a href="/admin/dashboard">IKM</a></h2>
     </div>
     <nav class="flex flex-1 flex-col">
-      <ul role="list" class="flex flex-1 flex-col gap-y-7">
+      <ul role="list" class="flex justify-between flex-1 flex-col gap-y-7">
         <li>
           <ul role="list" class="-mx-2 space-y-1">
             <li>
@@ -313,23 +314,22 @@
                   {{ end }}'
               >
                 <svg
-                  class='size-6 shrink-0 
-                  {{ if eq .ActiveLink "users" }}
-                    text-indigo-600
-                  {{ else }}
-                    text-gray-700 hover:text-indigo-600 hover:bg-gray-50
-                  {{ end }}'
+                  xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke-width="1.5"
                   stroke="currentColor"
-                  aria-hidden="true"
-                  data-slot="icon"
+                  class='size-6 shrink-0
+                      {{ if eq .ActiveLink "users" }}
+                        text-indigo-600
+                      {{ else }}
+                        text-gray-700 hover:text-indigo-600 hover:bg-gray-50
+                      {{ end }}'
                 >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+                    d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
                   />
                 </svg>
                 Users
@@ -414,11 +414,11 @@
               >
                 <svg
                   class='size-6 shrink-0 
-                      {{ if eq .ActiveLink "contacts" }}
-                        text-indigo-600
-                      {{ else }}
-                        text-gray-700 hover:text-indigo-600 hover:bg-gray-50
-                      {{ end }}'
+                  {{ if eq .ActiveLink "contacts" }}
+                    text-indigo-600
+                  {{ else }}
+                    text-gray-700 hover:text-indigo-600 hover:bg-gray-50
+                  {{ end }}'
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke-width="1.5"
@@ -429,7 +429,7 @@
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"
+                    d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
                   />
                 </svg>
                 Contacts
@@ -440,20 +440,30 @@
             <!-- More items... -->
           </ul>
         </li>
-        <li class="-mx-6 mt-auto">
-          <a
-            href="#"
-            class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
-          >
-            <img
-              class="size-8 rounded-full bg-gray-50"
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-              alt=""
-            />
-            <span class="sr-only">Your profile</span>
-            <span aria-hidden="true">Tom Cook</span>
-          </a>
-        </li>
+        <div class="w-full pb-8">
+          <li class="mt-auto w-full">
+            <button
+              type="button"
+              hx-get="/admin/settings"
+              hx-swap="outerHTML"
+              hx-target="body"
+              class="flex items-center w-full gap-x-4 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
+            >
+              Settings
+            </button>
+          </li>
+          <li class="mt-auto">
+            <button
+              type="button"
+              class="flex items-center w-full gap-x-4 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50"
+              hx-post="/logout"
+              hx-target="body"
+              hx-swap="outerHTML"
+            >
+              Logout
+            </button>
+          </li>
+        </div>
       </ul>
     </nav>
   </div>
@@ -485,17 +495,6 @@
       />
     </svg>
   </button>
-  <div class="flex-1 text-sm/6 font-semibold text-gray-900">
-    <a href="/admin/dashboard"> Dashboard </a>
-  </div>
-  <a href="#">
-    <span class="sr-only">Your profile</span>
-    <img
-      class="size-8 rounded-full bg-gray-50"
-      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
-      alt=""
-    />
-  </a>
 </div>
 
 {{ end }}

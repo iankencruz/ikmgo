@@ -45,7 +45,7 @@
               scope="col"
               class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
             >
-              Media Count
+              Images Amount
             </th>
             <th
               scope="col"
@@ -53,8 +53,11 @@
             >
               Publish
             </th>
-            <th scope="col" class="relative py-3.5 pl-3">
-              <span class="sr-only">Actions</span>
+            <th
+              scope="col"
+              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+            >
+              Actions
             </th>
           </tr>
         </thead>
@@ -79,19 +82,6 @@
                   </div>
                   {{ end }}
                 </div>
-                <select
-                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  hx-post="/admin/gallery/{{ .ID }}/cover"
-                  hx-trigger="change"
-                  hx-target="#cover-{{ .ID }}"
-                  hx-swap="outerHTML"
-                  name="media_id"
-                >
-                  <option value="">Select Cover Image</option>
-                  {{ range index $.GalleryMedia .ID }}
-                  <option value="{{ .ID }}">{{ .FileName }}</option>
-                  {{ end }}
-                </select>
               </div>
             </td>
 
@@ -117,7 +107,7 @@
                 class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
               />
             </td>
-            <td class="px-3 py-4 text-right text-sm font-medium">
+            <td class="px-3 py-4 text-left text-sm font-medium">
               <a
                 href="/admin/gallery/edit/{{ .ID }}"
                 class="text-indigo-600 hover:text-indigo-900"

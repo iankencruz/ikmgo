@@ -1,0 +1,15 @@
+{{ define "partials/cover_preview.html" }} {{ if .CoverImageURL }}
+<img
+  src="{{ .CoverImageURL }}"
+  alt="Cover Image"
+  class="rounded-lg object-cover aspect-video w-full"
+/>
+{{ else }}
+<div
+  class="w-full h-40 bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center rounded-lg"
+>
+  <span class="text-gray-400 text-sm">No Cover Selected</span>
+</div>
+{{ end }}
+<!-- Define End -->
+{{ end }}

@@ -1,18 +1,22 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"ikm/models"
 	"ikm/utils"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/disintegration/imaging"
 	"github.com/go-chi/chi/v5"
 	"github.com/minio/minio-go/v7"
 )
@@ -26,7 +30,6 @@ func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 	app.render(w, r, "index.html", map[string]interface{}{
 		"Title":      "Home",
 		"Gallery":    gallery,
-		"Masonry":    true,
 		"Media":      media,
 		"ActiveLink": "home",
 	})
@@ -98,7 +101,7 @@ func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
 // Logout Handler
 func (app *Application) Logout(w http.ResponseWriter, r *http.Request) {
 	ClearSession(w)
-	http.Redirect(w, r, "/login", http.StatusFound)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // Admin Dashboard Handler
@@ -107,6 +110,44 @@ func (app *Application) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	data["Title"] = "Admin Dashboard"
 	data["ActiveLink"] = "dashboard"
 	app.render(w, r, "admin/dashboard.html", data)
+}
+
+func (app *Application) AdminSettings(w http.ResponseWriter, r *http.Request) {
+	settings, err := app.SettingsModel.GetAll()
+	if err != nil {
+		http.Error(w, "Error fetching settings", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":    "Settings",
+		"Settings": settings,
+	}
+
+	app.render(w, r, "admin/settings.html", data)
+}
+
+// Update settings (POST)
+
+func (app *Application) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
+	}
+
+	for key, values := range r.PostForm {
+		if len(values) == 0 {
+			continue
+		}
+		value := values[0]
+
+		if err := app.SettingsModel.Set(key, value); err != nil {
+			http.Error(w, "Failed to update setting: "+key, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	http.Redirect(w, r, "/admin/settings", http.StatusSeeOther)
 }
 
 func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +201,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Gallery not found", http.StatusNotFound)
 		return
 	}
+	fmt.Printf("CoverIMage %s: ", gallery.CoverImageURL)
 
 	media, err := app.MediaModel.GetByGalleryID(id)
 	if err != nil {
@@ -322,17 +364,10 @@ func (app *Application) UploadMediaForm(w http.ResponseWriter, r *http.Request) 
 
 // Upload Media File (POST)
 func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(10 << 20); err != nil { // ✅ Parse only once
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
-
-	file, handler, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, "Error retrieving file", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
 
 	galleryID, err := strconv.Atoi(r.FormValue("gallery_id"))
 	if err != nil {
@@ -340,46 +375,134 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ✅ Fetch the next available position
-	nextPosition, err := app.MediaModel.GetNextPosition(galleryID)
-	if err != nil {
-		http.Error(w, "Error retrieving next position", http.StatusInternalServerError)
+	displayMode := r.FormValue("display_mode")
+	if displayMode == "" {
+		displayMode = "grid"
+	}
+
+	files := r.MultipartForm.File["files"] // Use `name="files"` and `multiple` in the form
+	if len(files) == 0 {
+		http.Error(w, "No files uploaded", http.StatusBadRequest)
 		return
 	}
 
-	fileName := strconv.Itoa(galleryID) + "_" + handler.Filename
-	fileKey := "Uploads/" + fileName
-
+	var outputBuffer bytes.Buffer
 	ctx := context.Background()
-	fileSize := handler.Size
-	contentType := handler.Header.Get("Content-Type")
 
-	_, err = app.S3Client.PutObject(
-		ctx, app.S3Bucket, fileKey, file, fileSize,
-		minio.PutObjectOptions{
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			log.Printf("❌ Error opening file: %v", err)
+			continue
+		}
+		defer file.Close()
+
+		fileName := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), galleryID, fileHeader.Filename)
+		thumbName := fmt.Sprintf("%d_%d_thumb_%s", time.Now().UnixNano(), galleryID, fileHeader.Filename)
+		mediumName := fmt.Sprintf("%d_%d_medium_%s", time.Now().UnixNano(), galleryID, fileHeader.Filename)
+
+		// Decode original image
+		img, err := imaging.Decode(file)
+		if err != nil {
+			log.Printf("❌ Error decoding image: %v", err)
+			continue
+		}
+
+		thumbnailImg := imaging.Resize(img, 500, 0, imaging.Lanczos)
+		mediumImg := imaging.Resize(img, 1024, 0, imaging.Lanczos)
+
+		// Reset file to start
+		file.Seek(0, 0)
+
+		fileKey := "Uploads/" + fileName
+		thumbKey := "Uploads/" + thumbName
+		mediumKey := "Uploads/" + mediumName
+
+		fileSize := fileHeader.Size
+		contentType := fileHeader.Header.Get("Content-Type")
+
+		// Upload original
+		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, fileKey, io.LimitReader(file, fileSize), fileSize, minio.PutObjectOptions{
 			ContentType:  contentType,
 			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
 		})
+		if err != nil {
+			log.Printf("❌ Error uploading original: %v", err)
+			continue
+		}
 
-	if err != nil {
-		http.Error(w, "Error uploading file", http.StatusInternalServerError)
-		return
+		// Medium image
+		var mediumBuf bytes.Buffer
+		err = imaging.Encode(&mediumBuf, mediumImg, imaging.JPEG)
+		if err != nil {
+			log.Printf("❌ Error encoding medium: %v", err)
+			continue
+		}
+		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, mediumKey, bytes.NewReader(mediumBuf.Bytes()), int64(mediumBuf.Len()), minio.PutObjectOptions{
+			ContentType:  "image/jpeg",
+			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
+		})
+		if err != nil {
+			log.Printf("❌ Error uploading medium: %v", err)
+			continue
+		}
+
+		// Thumbnail image
+		var thumbBuf bytes.Buffer
+		err = imaging.Encode(&thumbBuf, thumbnailImg, imaging.JPEG)
+		if err != nil {
+			log.Printf("❌ Error encoding thumbnail: %v", err)
+			continue
+		}
+		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, thumbKey, bytes.NewReader(thumbBuf.Bytes()), int64(thumbBuf.Len()), minio.PutObjectOptions{
+			ContentType:  "image/jpeg",
+			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
+		})
+		if err != nil {
+			log.Printf("❌ Error uploading thumbnail: %v", err)
+			continue
+		}
+
+		// Generate URLs
+		fullURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
+		// mediumURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + mediumKey
+		thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + thumbKey
+
+		// Get next position
+		position, err := app.MediaModel.GetNextPosition(galleryID)
+		if err != nil {
+			log.Printf("❌ Failed to get position: %v", err)
+			continue
+		}
+
+		// Insert into DB
+		err = app.MediaModel.Insert(fileName, fullURL, thumbURL, galleryID, position)
+		if err != nil {
+			log.Printf("❌ DB insert failed: %v", err)
+			continue
+		}
+
+		// ✅ Render media item partial and append to buffer
+		var rendered bytes.Buffer
+
+		err = app.renderToWriter(&rendered, r, "partials/media_item.html", map[string]interface{}{
+			"ID":           galleryID,
+			"FileName":     fileName,
+			"ThumbnailURL": thumbURL,
+			"FullURL":      fullURL,
+			"DisplayMode":  displayMode,
+		})
+		if err != nil {
+			log.Printf("❌ Render error: %v", err)
+			continue
+		}
+
+		outputBuffer.Write(rendered.Bytes())
 	}
 
-	fileURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
-
-	err = app.MediaModel.Insert(fileName, fileURL, galleryID, nextPosition)
-	if err != nil {
-		http.Error(w, "Error saving media", http.StatusInternalServerError)
-		return
-	}
-
-	// ✅ Return partial template with new image (HTMX live update)
-	app.render(w, r, "partials/media_item.html", map[string]interface{}{
-		"ID":       galleryID,
-		"FileName": fileName,
-		"URL":      fileURL,
-	})
+	// ✅ Return all uploaded items as HTML
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(outputBuffer.Bytes())
 }
 
 // Delete Media File (DELETE)
@@ -427,7 +550,8 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 	// 1. Handle GET request - show contact form
 	if r.Method == http.MethodGet {
 		app.render(w, r, "contact.html", map[string]interface{}{
-			"Title": "Contact",
+			"Title":      "Contact",
+			"ActiveLink": "contact",
 		})
 		return
 	}
@@ -514,12 +638,52 @@ func (app *Application) Galleries(w http.ResponseWriter, r *http.Request) {
 // View Gallery Page
 
 func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	gallery, _ := app.GalleryModel.GetByID(id)
-	media, _ := app.MediaModel.GetByGalleryID(id)
+	galleryIDStr := chi.URLParam(r, "id")
+
+	// ✅ Check if galleryID is null or invalid
+	if galleryIDStr == "" || galleryIDStr == "null" {
+		log.Println("❌ Invalid gallery ID: received 'null'")
+		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+		return
+	}
+
+	galleryID, err := strconv.Atoi(galleryIDStr)
+	if err != nil {
+		log.Printf("❌ Invalid gallery ID: %v", err)
+		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("✅ GalleryView requested for ID: %d", galleryID)
+
+	// Fetch gallery
+	gallery, err := app.GalleryModel.GetByID(galleryID)
+	if err != nil {
+		log.Printf("❌ Error fetching gallery: %v", err)
+		http.Error(w, "Gallery not found", http.StatusNotFound)
+		return
+	}
+
+	// Fetch media
+	media, err := app.MediaModel.GetByGalleryID(galleryID)
+	if err != nil {
+		log.Printf("❌ Error fetching media: %v", err)
+		http.Error(w, "Error retrieving media", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("✅ Fetched %d media items for Gallery ID: %d", len(media), galleryID)
+
+	if r.Header.Get("HX-Request") != "" {
+		log.Println("🔄 HTMX request detected, rendering media partial")
+		app.render(w, r, "partials/gallery_component.html", map[string]interface{}{
+			"Gallery": gallery,
+			"Media":   media,
+		})
+		return
+	}
 
 	app.render(w, r, "gallery.html", map[string]interface{}{
-		"Title":   gallery.Title,
 		"Gallery": gallery,
 		"Media":   media,
 	})
@@ -541,6 +705,8 @@ func (app *Application) SetFeaturedGallery(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/admin/galleries", http.StatusSeeOther)
 }
 
+// Set Cover Image for Gallery
+
 func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
 	galleryID, err := strconv.Atoi(chi.URLParam(r, "galleryID"))
 	if err != nil {
@@ -549,13 +715,21 @@ func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mediaID, err := strconv.Atoi(r.FormValue("media_id"))
+	mediaIDStr := r.FormValue("media_id")
+	if mediaIDStr == "" {
+		log.Println("❌ No media_id sent in request")
+		http.Error(w, "Missing media ID", http.StatusBadRequest)
+		return
+	}
+
+	mediaID, err := strconv.Atoi(mediaIDStr)
 	if err != nil {
 		log.Printf("❌ Invalid media ID: %v", err)
 		http.Error(w, "Invalid media ID", http.StatusBadRequest)
 		return
 	}
 
+	// Set the cover image
 	err = app.GalleryModel.SetCoverImage(galleryID, mediaID)
 	if err != nil {
 		log.Printf("❌ Error setting cover image: %v", err)
@@ -563,23 +737,20 @@ func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 🔑 Fetch the updated media record
-	media, err := app.MediaModel.GetByID(mediaID)
+	// Fetch media for rendering the new preview
+	media, err := app.MediaModel.GetByIDAndGallery(mediaID, galleryID)
 	if err != nil {
 		log.Printf("❌ Cover image not found: %v", err)
-		http.Error(w, "Cover image not found", http.StatusInternalServerError)
+		http.Error(w, "Media not found in this gallery", http.StatusNotFound)
 		return
 	}
 
-	// ✅ Use the S3 URL from the `media` record
-	coverImageURL := media.URL
+	thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/Uploads/" + media.FileName
 
-	// ✅ Return the updated partial to HTMX
-	//    "partials/cover_image.html" is the path to your partial.
-	//    If you're using a named block in cover_image.html, make sure to call ExecuteTemplate accordingly in your render method.
-	app.render(w, r, "partials/cover_image.html", map[string]interface{}{
+	// ✅ Render the updated preview container
+	app.render(w, r, "partials/cover_preview.html", map[string]interface{}{
 		"GalleryID":     galleryID,
-		"CoverImageURL": coverImageURL,
+		"CoverImageURL": thumbURL,
 	})
 }
 
@@ -607,45 +778,31 @@ func (app *Application) SetGalleryVisibility(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 }
 
-func (app *Application) UpdateMediaOrder(w http.ResponseWriter, r *http.Request) {
-	mediaID, err := strconv.Atoi(r.FormValue("media_id"))
+// Sort Media
+func (app *Application) UpdateMediaOrderBulk(w http.ResponseWriter, r *http.Request) {
+
+	body, _ := io.ReadAll(r.Body)
+
+	var payload struct {
+		Order     []int `json:"order"`
+		GalleryID int   `json:"gallery_id"`
+	}
+
+	err := json.Unmarshal(body, &payload)
 	if err != nil {
-		log.Printf("❌ Invalid media ID: %v", err)
-		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		log.Printf("❌ Unmarshal error: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	newPosition, err := strconv.Atoi(r.FormValue("position"))
+	err = app.MediaModel.UpdatePositionsInBulk(payload.GalleryID, payload.Order)
 	if err != nil {
-		log.Printf("❌ Invalid position: %v", err)
-		http.Error(w, "Invalid position", http.StatusBadRequest)
+		log.Printf("❌ Failed to bulk update media positions: %v", err)
+		http.Error(w, "Failed to update positions", http.StatusInternalServerError)
 		return
 	}
 
-	galleryID, err := strconv.Atoi(r.FormValue("gallery_id"))
-	if err != nil {
-		log.Printf("❌ Invalid gallery ID: %v", err)
-		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
-		return
-	}
-
-	// ✅ Ensure media exists before updating
-	exists, err := app.MediaModel.MediaExists(mediaID, galleryID)
-	if err != nil || !exists {
-		log.Printf("❌ Media ID %d does not exist in Gallery ID %d", mediaID, galleryID)
-		http.Error(w, "Media not found", http.StatusNotFound)
-		return
-	}
-
-	// ✅ Update all media positions in the gallery
-	err = app.MediaModel.ReorderPositions(galleryID, mediaID, newPosition)
-	if err != nil {
-		log.Printf("❌ Error updating media order: %v", err)
-		http.Error(w, "Error updating media order", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK) // ✅ Success response
+	w.WriteHeader(http.StatusOK)
 }
 
 // Helper function to verify recaptcha

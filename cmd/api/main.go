@@ -15,11 +15,12 @@ import (
 )
 
 type Application struct {
-	DB           *pgxpool.Pool
-	UserModel    *models.UserModel
-	GalleryModel *models.GalleryModel
-	MediaModel   *models.MediaModel
-	ContactModel *models.ContactModel
+	DB            *pgxpool.Pool
+	UserModel     *models.UserModel
+	GalleryModel  *models.GalleryModel
+	MediaModel    *models.MediaModel
+	ContactModel  *models.ContactModel
+	SettingsModel *models.SettingsModel
 
 	// S3 configuration
 	S3Client *minio.Client
@@ -101,11 +102,12 @@ func main() {
 
 	// Initialize application struct
 	app := &Application{
-		DB:           dbPool,
-		UserModel:    &models.UserModel{DB: dbPool},
-		GalleryModel: &models.GalleryModel{DB: dbPool},
-		MediaModel:   &models.MediaModel{DB: dbPool},
-		ContactModel: &models.ContactModel{DB: dbPool},
+		DB:            dbPool,
+		UserModel:     &models.UserModel{DB: dbPool},
+		GalleryModel:  &models.GalleryModel{DB: dbPool},
+		MediaModel:    &models.MediaModel{DB: dbPool},
+		ContactModel:  &models.ContactModel{DB: dbPool},
+		SettingsModel: &models.SettingsModel{DB: dbPool},
 
 		S3Client: s3Client,
 		S3Bucket: s3Bucket,
@@ -117,9 +119,9 @@ func main() {
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      app.routes(),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  90 * time.Second,
 	}
 
 	log.Printf("Server running on port %s", port)

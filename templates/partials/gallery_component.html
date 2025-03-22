@@ -3,8 +3,9 @@
   {{ range .Media }}
   <div class="relative aspect-square hover:bg-black/50 flex">
     <img
-      src="{{ .URL }}"
-      data-large="{{ .URL }}"
+      src="{{ .ThumbnailURL }}"
+      data-full="{{ .FullURL }}"
+      data-gallery="{{ .GalleryID }}"
       alt="{{ .FileName }}"
       class="absolute inset-0 w-full h-full object-cover cursor-pointer"
       loading="lazy"
@@ -19,19 +20,19 @@
 >
   <button
     id="lightboxClose"
-    class="absolute top-4 right-8 text-white text-3xl font-bold px-2"
+    class="absolute top-4 right-8 text-white text-3xl font-bold px-2 cursor-pointer"
   >
     &times;
   </button>
   <button
     id="lightboxPrev"
-    class="absolute left-4 text-white text-3xl font-bold px-2"
+    class="absolute left-4 text-white text-3xl font-bold px-2 cursor-pointer"
   >
     &#10094;
   </button>
   <button
     id="lightboxNext"
-    class="absolute right-4 text-white text-3xl font-bold px-2"
+    class="absolute right-4 text-white text-3xl font-bold px-2 cursor-pointer"
   >
     &#10095;
   </button>

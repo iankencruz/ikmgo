@@ -1,0 +1,35 @@
+
+{{ define "content" }}
+<h1 class="text-2xl font-bold mb-4">Website Settings</h1>
+
+<form method="POST" action="/admin/settings" class="space-y-4">
+  <div>
+    <label class="block font-semibold">Website Title</label>
+    <input type="text" name="site_title" value="{{ index .Settings "site_title" }}"
+      class="w-full p-2 border border-gray-300 rounded" />
+  </div>
+
+  <div>
+    <label class="block font-semibold">Threads URL</label>
+    <input type="text" name="threads" value="{{ index .Settings "threads" }}"
+      class="w-full p-2 border border-gray-300 rounded" />
+  </div>
+
+  <div>
+    <label class="block font-semibold">Instagram URL</label>
+    <input type="text" name="instagram" value="{{ index .Settings "instagram" }}"
+      class="w-full p-2 border border-gray-300 rounded" />
+  </div>
+
+
+    <div>
+    <label class="block font-semibold">Youtube URL</label>
+    <input type="text" name="youtube" value="{{ index .Settings "youtube" }}"
+      class="w-full p-2 border border-gray-300 rounded" />
+  </div>
+
+
+
+  <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Save Settings</button>
+</form>
+{{ end }}

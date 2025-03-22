@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -36,7 +37,7 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 
 	// Fetch associated images sorted by position in ASCENDING order
 	rows, err := g.DB.Query(context.Background(),
-		"SELECT id, file_name, url, position FROM media WHERE gallery_id = $1 ORDER BY position DESC", gallery.ID)
+		"SELECT id, file_name, thumbnail_url,  full_url, position FROM media WHERE gallery_id = $1 ORDER BY position ASC", gallery.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -45,7 +46,7 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 	var images []*Media
 	for rows.Next() {
 		var media Media
-		err := rows.Scan(&media.ID, &media.FileName, &media.URL, &media.Position)
+		err := rows.Scan(&media.ID, &media.FileName, &media.ThumbnailURL, &media.FullURL, &media.Position)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -70,7 +71,7 @@ func (g *GalleryModel) GetFeatured() (*Gallery, []*Media, error) {
 
 	// Fetch associated images including their URL
 	rows, err := g.DB.Query(context.Background(),
-		"SELECT id, file_name, url FROM media WHERE gallery_id = $1 ORDER BY id DESC", gallery.ID)
+		"SELECT id, file_name, thumbnail_url,  full_url, position FROM media WHERE gallery_id = $1 ORDER BY id ASC", gallery.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -79,7 +80,7 @@ func (g *GalleryModel) GetFeatured() (*Gallery, []*Media, error) {
 	var images []*Media
 	for rows.Next() {
 		var media Media
-		err := rows.Scan(&media.ID, &media.FileName, &media.URL) // ✅ Fetch media URL
+		err := rows.Scan(&media.ID, &media.FileName, &media.ThumbnailURL, media.FullURL, media.Position) // ✅ Fetch media URL
 		if err != nil {
 			return nil, nil, err
 		}
@@ -110,12 +111,12 @@ func (g *GalleryModel) Create(title string) error {
 
 func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
-		`SELECT g.id, g.title, g.cover_image_id, m.url AS cover_image_url,
+		`SELECT g.id, g.title, g.cover_image_id, m.full_url AS cover_image_url,
                 (SELECT COUNT(*) FROM media WHERE media.gallery_id = g.id) AS media_count
          FROM galleries g
          LEFT JOIN media m ON g.cover_image_id = m.id
          WHERE g.published = TRUE
-         ORDER BY g.id DESC`)
+         ORDER BY g.id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -150,11 +151,11 @@ func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 
 func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
-		`SELECT g.id, g.title, g.cover_image_id, g.published, m.url AS cover_image_url,
+		`SELECT g.id, g.title, g.cover_image_id, g.published, m.full_url AS cover_image_url,
                 (SELECT COUNT(*) FROM media WHERE media.gallery_id = g.id) AS media_count
          FROM galleries g
          LEFT JOIN media m ON g.cover_image_id = m.id
-         ORDER BY g.id DESC`)
+         ORDER BY g.id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -196,13 +197,30 @@ func (g *GalleryModel) SetCoverImage(galleryID, mediaID int) error {
 }
 
 // GetByID retrieves a single gallery by its ID
+
 func (g *GalleryModel) GetByID(id int) (*Gallery, error) {
 	var gallery Gallery
-	err := g.DB.QueryRow(context.Background(), "SELECT id, title FROM galleries WHERE id=$1", id).
-		Scan(&gallery.ID, &gallery.Title)
+	err := g.DB.QueryRow(context.Background(), `
+		SELECT g.id, g.title, g.cover_image_id, m.thumbnail_url
+		FROM galleries g
+		LEFT JOIN media m ON g.cover_image_id = m.id
+		WHERE g.id = $1`, id).
+		Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageID, &gallery.CoverImageURL)
 
 	if err != nil {
-		return nil, err
+		log.Printf("⚠️ Scan fallback due to broken cover_image_id: %v", err)
+
+		// fallback query without the join
+		err = g.DB.QueryRow(context.Background(),
+			`SELECT id, title, cover_image_id FROM galleries WHERE id = $1`, id).
+			Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageID)
+
+		// set to nil manually
+		gallery.CoverImageURL = nil
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &gallery, nil

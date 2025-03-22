@@ -20,43 +20,12 @@
 
   <div class="mt-6 flow-root">
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-300">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-            >
-              ID
-            </th>
-            <th
-              scope="col"
-              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-            >
-              Preview
-            </th>
-            <th
-              scope="col"
-              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-            >
-              File Name
-            </th>
-            <th
-              scope="col"
-              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-            >
-              Gallery
-            </th>
-            <th scope="col" class="relative py-3.5 pl-3">
-              <span class="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody id="media-list" class="divide-y divide-gray-200 bg-white">
-          {{ range .Media }} {{ template "partials/media_item.html" . }} {{ end
-          }}
-        </tbody>
-      </table>
+      <ul
+        role="list"
+        class="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 sm:gap-x-3 lg:grid-cols-4 xl:gap-x-4"
+      >
+        {{ range .Media }} {{ template "partials/media_item.html" . }} {{ end }}
+      </ul>
     </div>
   </div>
 </div>

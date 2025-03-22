@@ -1,34 +1,124 @@
 {{ define "content" }}
 <h1 class="text-2xl font-bold mb-4">Edit Gallery: {{ .Gallery.Title }}</h1>
 
-<form hx-post="/admin/gallery/update/{{ .Gallery.ID }}" class="space-y-4">
-  <div>
-    <label class="block font-medium text-gray-700">Gallery Title</label>
-    <input
-      type="text"
-      name="title"
-      value="{{ .Gallery.Title }}"
-      class="border rounded w-full p-2"
-    />
+<div class="grid grid-cols-12 w-full justify-between gap-x-12">
+  <form
+    hx-post="/admin/gallery/update/{{ .Gallery.ID }}"
+    class="space-y-4 col-span-8"
+  >
+    <div>
+      <label class="block font-medium text-gray-700">Gallery Title</label>
+      <input
+        type="text"
+        name="title"
+        value="{{ .Gallery.Title }}"
+        class="border rounded w-full p-2"
+      />
+    </div>
+
+    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
+      Save Changes
+    </button>
+  </form>
+
+  <div class="col-span-4">
+    <div class="relative w-full max-w-sm rounded-lg shadow-md">
+      <!-- Cover preview -->
+      <div id="cover-preview">
+        {{ if .Gallery.CoverImageURL }}
+        <img
+          src="{{ .Gallery.CoverImageURL }}"
+          alt="Cover Image"
+          class="rounded-lg object-cover aspect-video w-full"
+        />
+        {{ else }}
+        <div
+          class="w-full h-40 bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center rounded-lg"
+        >
+          <span class="text-gray-400 text-sm">No Cover Selected</span>
+        </div>
+        {{ end }}
+      </div>
+
+      <!-- Top-right button -->
+      <div class="absolute top-2 right-2 z-10">
+        <button
+          type="button"
+          onclick="document.getElementById('coverModal').classList.remove('hidden')"
+          class="inline-flex items-center rounded-md bg-white/80 px-2 py-1 text-xs font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-white"
+        >
+          Edit
+        </button>
+      </div>
+    </div>
+    <!-- end floating cover-->
+  </div>
+  <!-- Modal -->
+  <div
+    id="coverModal"
+    class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/50"
+    aria-labelledby="modal-title"
+    role="dialog"
+    aria-modal="true"
+  >
+    <div class="flex min-h-full items-center justify-center p-4 sm:p-0">
+      <div
+        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl"
+      >
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">
+            Select a Cover Image
+          </h3>
+
+          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+            {{ range .Media }}
+            <button
+              hx-post="/admin/gallery/{{ $.Gallery.ID }}/cover"
+              hx-vals='{"media_id": "{{ .ID }}"}'
+              hx-target="#cover-preview"
+              hx-swap="innerHTML"
+              onclick="document.getElementById('coverModal').classList.add('hidden')"
+              class="aspect-square overflow-hidden rounded-lg border hover:ring-2 hover:ring-indigo-500"
+            >
+              <img
+                src="{{ .ThumbnailURL }}"
+                alt="{{ .FileName }}"
+                class="w-full h-full object-cover"
+              />
+            </button>
+            {{ end }}
+          </div>
+        </div>
+
+        <div class="bg-gray-50 px-4 py-3 flex justify-end">
+          <button
+            type="button"
+            onclick="document.getElementById('coverModal').classList.add('hidden')"
+            class="inline-flex justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
-    Save Changes
-  </button>
-</form>
+  <!-- end col span 4 2-->
+</div>
 
 <!-- Upload Media -->
 <h2 class="text-xl font-bold mt-6">Upload New Media</h2>
+
 <form
   hx-post="/admin/media/upload"
-  hx-encoding="multipart/form-data"
-  hx-target=".sortable"
-  hx-trigger="submit"
+  hx-target="#sortableGrid"
+  hx-swap="afterbegin"
+  enctype="multipart/form-data"
   onsubmit="return false;"
 >
-  <!-- ✅ Prevent default form submission -->
+  <input type="file" name="files" multiple />
   <input type="hidden" name="gallery_id" value="{{ .Gallery.ID }}" />
-  <input type="file" name="file" class="border p-2 w-full rounded" />
+  <input type="hidden" name="display_mode" id="display_mode" value="grid" />
   <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded mt-2">
     Upload
   </button>
@@ -91,8 +181,8 @@
     data-id="{{ .ID }}"
     data-gallery="{{ .GalleryID }}"
   >
-    <img src="{{ .URL }}" class="w-full h-40 object-cover rounded" />
-    <p class="text-center text-sm mt-2">{{ .FileName }}</p>
+    <img src="{{ .ThumbnailURL }}" class="w-full h-40 object-cover rounded" />
+    <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
     <button
       hx-delete="/admin/media/{{ .ID }}"
       hx-confirm="Are you sure?"
@@ -128,7 +218,7 @@
     >
       <td class="border border-gray-300 px-4 py-2 cursor-move">☰</td>
       <td class="border border-gray-300 px-4 py-2">
-        <img src="{{ .URL }}" class="w-20 h-20 object-cover" />
+        <img src="{{ .ThumbnailURL }}" class="w-20 h-20 object-cover" />
       </td>
       <td class="border border-gray-300 px-4 py-2">{{ .FileName }}</td>
       <td class="border border-gray-300 px-4 py-2">
@@ -150,69 +240,100 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const initSortable = () => {
+    const gridViewBtn = document.getElementById("gridViewBtn");
+    const tableViewBtn = document.getElementById("tableViewBtn");
+    const sortableGrid = document.getElementById("sortableGrid");
+    const sortableTable = document.getElementById("sortableTable");
+    const displayModeInput = document.getElementById("display_mode");
+
+    /** ✅ Initialize Sortable.js */
+    function initSortable() {
       document.querySelectorAll(".sortable").forEach(function (el) {
-        new Sortable(el, {
+        new Sortable(document.querySelector(".sortable"), {
           animation: 150,
-          ghostClass: "bg-gray-200",
-          onEnd: function (evt) {
-            let mediaID = evt.item.dataset.id;
-            let newPosition = evt.newIndex;
-            let galleryID = el.dataset.gallery;
+          onEnd: function () {
+            const mediaIDs = Array.from(
+              document.querySelectorAll(".sortable-item"),
+            ).map((el) => el.dataset.id);
 
-            if (!galleryID || galleryID === "0") {
-              console.error("❌ Missing or invalid gallery ID");
-              return;
-            }
+            const galleryID = parseInt(
+              document.querySelector(".sortable").dataset.gallery,
+              10,
+            );
 
-            fetch("/admin/media/update-order", {
+            fetch("/admin/media/update-order-bulk", {
               method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: `media_id=${mediaID}&position=${newPosition}&gallery_id=${galleryID}`,
-            })
-              .then((response) => {
-                if (!response.ok) {
-                  console.error("❌ Failed to update media order");
-                }
-              })
-              .catch((error) => console.error("❌ Fetch error:", error));
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                gallery_id: galleryID,
+                order: mediaIDs.map(Number), // ordered array of media IDs
+              }),
+            }).then((res) => {
+              if (!res.ok) {
+                console.error("❌ Failed to update media positions");
+              }
+            });
           },
         });
       });
-    };
+    }
 
     // ✅ Initialize Sortable on page load
     initSortable();
 
-    // ✅ Re-initialize Sortable when media updates via HTMX
+    // ✅ Re-initialize Sortable when HTMX updates media items
     document.addEventListener("htmx:afterSwap", function (evt) {
       if (evt.target.closest(".sortable")) {
         initSortable();
       }
     });
 
-    // ✅ View Toggle Logic
-    document
-      .getElementById("gridViewBtn")
-      .addEventListener("click", function () {
-        document.getElementById("sortableGrid").classList.remove("hidden");
-        document.getElementById("sortableTable").classList.add("hidden");
-        this.classList.add("bg-blue-500", "text-white");
-        document
-          .getElementById("tableViewBtn")
-          .classList.remove("bg-blue-500", "text-white");
-      });
+    /** ✅ Handle View Toggle */
+    function setViewMode(mode) {
+      if (mode === "grid") {
+        sortableGrid.classList.remove("hidden");
+        sortableTable.classList.add("hidden");
+        gridViewBtn.classList.add("bg-blue-500", "text-white");
+        tableViewBtn.classList.remove("bg-blue-500", "text-white");
+        displayModeInput.value = "grid";
+      } else {
+        sortableTable.classList.remove("hidden");
+        sortableGrid.classList.add("hidden");
+        tableViewBtn.classList.add("bg-blue-500", "text-white");
+        gridViewBtn.classList.remove("bg-blue-500", "text-white");
+        displayModeInput.value = "table";
+      }
+    }
 
-    document
-      .getElementById("tableViewBtn")
-      .addEventListener("click", function () {
-        document.getElementById("sortableTable").classList.remove("hidden");
-        document.getElementById("sortableGrid").classList.add("hidden");
-        this.classList.add("bg-blue-500", "text-white");
-        document
-          .getElementById("gridViewBtn")
-          .classList.remove("bg-blue-500", "text-white");
-      });
+    // ✅ Set the default view mode on page load
+    const currentMode = localStorage.getItem("display_mode") || "grid";
+    setViewMode(currentMode);
+
+    // ✅ Update view mode and store in localStorage
+    gridViewBtn.addEventListener("click", function () {
+      setViewMode("grid");
+      localStorage.setItem("display_mode", "grid");
+    });
+
+    tableViewBtn.addEventListener("click", function () {
+      setViewMode("table");
+      localStorage.setItem("display_mode", "table");
+    });
+
+    /** ✅ Ensure new media uploads respect the current display mode */
+    document.addEventListener("htmx:beforeRequest", function (evt) {
+      const uploadForm = evt.target.closest("form");
+      if (uploadForm && uploadForm.querySelector("#display_mode")) {
+        uploadForm.querySelector("#display_mode").value =
+          localStorage.getItem("display_mode") || "grid";
+      }
+    });
+
+    // ✅ Reinitialize view after new media is uploaded
+    document.addEventListener("htmx:afterSwap", function () {
+      const mode = localStorage.getItem("display_mode") || "grid";
+      setViewMode(mode);
+    });
   });
 </script>
 {{ end }}

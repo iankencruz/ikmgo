@@ -33,7 +33,7 @@ func (m *ContactModel) Insert(firstName, lastName, email, subject, message strin
 func (m *ContactModel) GetAll() ([]*Contact, error) {
 	rows, err := m.DB.Query(context.Background(),
 		`SELECT id, first_name, last_name, email, subject, message, created_at
-		 FROM contacts ORDER BY created_at DESC`)
+		 FROM contacts ORDER BY created_at ASC`)
 	if err != nil {
 		return nil, err
 	}

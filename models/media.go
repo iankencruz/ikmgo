@@ -2,18 +2,21 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Media struct {
-	ID        int
-	FileName  string
-	URL       string
-	GalleryID int
-	Position  int
+	ID           int
+	FileName     string
+	ThumbnailURL string
+	FullURL      string
+	GalleryID    int
+	Position     int
 }
 
 type MediaModel struct {
@@ -21,11 +24,11 @@ type MediaModel struct {
 }
 
 // Insert adds a new media file and links it to a gallery
-func (m *MediaModel) Insert(fileName, fileURL string, galleryID, position int) error {
-	_, err := m.DB.Exec(context.Background(),
-		"INSERT INTO media (file_name, url, gallery_id, position) VALUES ($1, $2, $3, $4)",
-		fileName, fileURL, galleryID, position)
 
+func (m *MediaModel) Insert(fileName, fullURL, thumbURL string, galleryID, position int) error {
+	_, err := m.DB.Exec(context.Background(),
+		"INSERT INTO media (file_name, full_url,  thumbnail_url, gallery_id, position) VALUES ($1, $2, $3, $4, $5)",
+		fileName, fullURL, thumbURL, galleryID, position)
 	return err
 }
 
@@ -33,7 +36,7 @@ func (m *MediaModel) Insert(fileName, fileURL string, galleryID, position int) e
 
 func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 	rows, err := m.DB.Query(context.Background(),
-		"SELECT id, file_name, url, position FROM media WHERE gallery_id=$1 ORDER BY position DESC", galleryID)
+		"SELECT id, file_name, full_url,  thumbnail_url, position FROM media WHERE gallery_id=$1 ORDER BY position ASC", galleryID)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +45,7 @@ func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 	var media []*Media
 	for rows.Next() {
 		m := &Media{}
-		err := rows.Scan(&m.ID, &m.FileName, &m.URL, &m.Position)
+		err := rows.Scan(&m.ID, &m.FileName, &m.FullURL, &m.ThumbnailURL, &m.Position)
 		if err != nil {
 			return nil, err
 		}
@@ -55,11 +58,30 @@ func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 func (m *MediaModel) GetByID(id int) (*Media, error) {
 	var media Media
 	err := m.DB.QueryRow(context.Background(),
-		"SELECT id, file_name, url, gallery_id FROM media WHERE id=$1", id).
-		Scan(&media.ID, &media.FileName, &media.URL, &media.GalleryID)
+		`SELECT id, file_name, thumbnail_url, full_url, position
+		FROM media
+		WHERE gallery_id = $1
+		ORDER BY position ASC`, id).
+		Scan(&media.ID, &media.FileName, &media.ThumbnailURL, &media.FullURL, &media.GalleryID)
 	if err != nil {
 		return nil, err
 	}
+	return &media, nil
+}
+
+func (m *MediaModel) GetByIDAndGallery(id int, galleryID int) (*Media, error) {
+	var media Media
+	err := m.DB.QueryRow(context.Background(),
+		`SELECT id, file_name, full_url, thumbnail_url, position, gallery_id
+		 FROM media
+		 WHERE id = $1 AND gallery_id = $2 order by position ASC`,
+		id, galleryID).
+		Scan(&media.ID, &media.FileName, &media.FullURL, &media.ThumbnailURL, &media.Position, &media.GalleryID)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &media, nil
 }
 
@@ -78,10 +100,10 @@ func (m *MediaModel) DeleteByGalleryID(galleryID int) error {
 
 func (m *MediaModel) GetAll() ([]map[string]interface{}, error) {
 	rows, err := m.DB.Query(context.Background(),
-		`SELECT media.id, media.file_name, media.url, galleries.title 
+		`SELECT media.id, media.file_name, media.thumbnail_url, full_url, galleries.title 
 		 FROM media 
 		 JOIN galleries ON media.gallery_id = galleries.id 
-		 ORDER BY media.id DESC`)
+		 ORDER BY media.id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +112,9 @@ func (m *MediaModel) GetAll() ([]map[string]interface{}, error) {
 	var media []map[string]interface{} // ✅ Return as a slice of maps
 	for rows.Next() {
 		var id int
-		var fileName, url, galleryTitle string
+		var fileName, thumbnail_url, full_url, galleryTitle string
 
-		err := rows.Scan(&id, &fileName, &url, &galleryTitle)
+		err := rows.Scan(&id, &fileName, &thumbnail_url, &full_url, &galleryTitle)
 		if err != nil {
 			return nil, err
 		}
@@ -101,8 +123,9 @@ func (m *MediaModel) GetAll() ([]map[string]interface{}, error) {
 		mediaItem := map[string]interface{}{
 			"ID":           id,
 			"FileName":     fileName,
-			"URL":          url,
-			"GalleryTitle": galleryTitle, // ✅ No change to Media struct
+			"ThumbnailURL": thumbnail_url,
+			"FullURL":      full_url,
+			"GalleryTitle": galleryTitle,
 		}
 		media = append(media, mediaItem)
 	}
@@ -189,4 +212,54 @@ func (m *MediaModel) GetNextPosition(galleryID int) (int, error) {
 	}
 
 	return maxPosition + 1, nil // ✅ Assigns the next available position
+}
+
+func (m *MediaModel) UpdatePositionsInBulk(galleryID int, mediaIDs []int) error {
+	ctx := context.Background()
+	tx, err := m.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Step 1: Clear positions for all involved media to avoid constraint conflict
+	ids := make([]interface{}, len(mediaIDs))
+	placeholders := make([]string, len(mediaIDs))
+	for i, id := range mediaIDs {
+		ids[i] = id
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+
+	_, err = tx.Exec(ctx,
+		fmt.Sprintf(
+			`UPDATE media SET position = NULL
+			 WHERE id IN (%s) AND gallery_id = $%d`,
+			strings.Join(placeholders, ","), len(mediaIDs)+1,
+		),
+		append(ids, galleryID)...,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to nullify existing positions: %w", err)
+	}
+
+	// Step 2: Reassign positions without conflicts
+	seen := make(map[int]bool)
+	position := 0
+	for _, mediaID := range mediaIDs {
+		if seen[mediaID] {
+			continue
+		}
+		seen[mediaID] = true
+
+		_, err := tx.Exec(ctx,
+			`UPDATE media SET position = $1 WHERE id = $2 AND gallery_id = $3`,
+			position, mediaID, galleryID,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to update media %d: %w", mediaID, err)
+		}
+		position++
+	}
+
+	return tx.Commit(ctx)
 }

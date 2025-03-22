@@ -48,7 +48,6 @@ func (app *Application) routes() http.Handler {
 
 		// Galleries
 		r.Get("/galleries", app.AdminGalleries)
-		r.Get("/gallery/{id}", app.GalleryView)
 		r.Get("/gallery/create", app.CreateGalleryForm)
 		r.Post("/gallery/create", app.CreateGallery)
 		r.Delete("/gallery/{id}", app.DeleteGallery)
@@ -70,10 +69,15 @@ func (app *Application) routes() http.Handler {
 		r.Get("/media/upload", app.UploadMediaForm)
 		r.Post("/media/upload", app.UploadMedia)
 		r.Delete("/media/{id}", app.DeleteMedia)
-		r.Post("/media/update-order", app.UpdateMediaOrder)
+
+		r.Post("/media/update-order-bulk", app.UpdateMediaOrderBulk)
 
 		// Contacts
 		r.Get("/contacts", app.AdminContacts)
+
+		// Settings
+		r.Get("/settings", app.AdminSettings)
+		r.Post("/settings", app.UpdateSettings)
 
 	})
 

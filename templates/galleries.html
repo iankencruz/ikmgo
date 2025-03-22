@@ -1,3 +1,5 @@
+{{ define "title" }}Galleries{{ end }}
+<!-- Title-->
 {{ define "content" }}
 <div class="px-4 sm:px-6 lg:px-8 py-10">
   <div class="grid grid-cols-3 gap-6 mt-6">
@@ -9,10 +11,7 @@
           src="{{ .CoverImageURL }}"
           class="w-full h-48 object-cover rounded"
         />
-        {{ else }}
-        <div class="w-full h-48 bg-gray-200 flex items-center justify-center">
-          <span class="text-gray-500">No Cover Image</span>
-        </div>
+
         {{ end }}
         <h2 class="text-lg font-semibold mt-2">{{ .Title }}</h2>
       </a>

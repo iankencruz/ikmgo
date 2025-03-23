@@ -25,6 +25,8 @@ func (app *Application) routes() http.Handler {
 	r.Get("/contact", app.Contact)
 	r.Get("/galleries", app.Galleries)
 	r.Get("/gallery/{id}", app.GalleryView)
+	r.Get("/projects", app.PublicProjectsList)
+	r.Get("/project/{id}", app.PublicProjectView)
 
 	// Authentication Routes
 	r.Get("/login", app.Login)
@@ -57,6 +59,17 @@ func (app *Application) routes() http.Handler {
 
 		r.Post("/gallery/{galleryID}/cover", app.SetCoverImage)
 		r.Post("/gallery/{id}/publish", app.SetGalleryVisibility)
+
+		// Projects
+		r.Get("/projects", app.AdminProjects)                   // list view
+		r.Get("/project/create", app.CreateProjectForm)         // show form
+		r.Post("/project/create", app.CreateProject)            // handle form submit
+		r.Get("/project/edit/{id}", app.EditProjectForm)        // show edit form
+		r.Post("/project/edit/{id}", app.UpdateProject)         // handle update
+		r.Post("/project/{id}/cover", app.SetProjectCoverImage) // HTMX: update cover
+		r.Post("/project/update-order", app.UpdateProjectMediaOrder)
+		r.Post("/project/media/upload", app.UploadProjectMedia)
+		r.Post("/project/{id}/publish", app.SetProjectVisibility)
 
 		//Users
 		r.Get("/users", app.AdminUsers)

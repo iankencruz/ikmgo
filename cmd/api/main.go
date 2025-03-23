@@ -21,6 +21,7 @@ type Application struct {
 	MediaModel    *models.MediaModel
 	ContactModel  *models.ContactModel
 	SettingsModel *models.SettingsModel
+	ProjectModel  *models.ProjectModel
 
 	// S3 configuration
 	S3Client *minio.Client
@@ -108,6 +109,7 @@ func main() {
 		MediaModel:    &models.MediaModel{DB: dbPool},
 		ContactModel:  &models.ContactModel{DB: dbPool},
 		SettingsModel: &models.SettingsModel{DB: dbPool},
+		ProjectModel:  &models.ProjectModel{DB: dbPool},
 
 		S3Client: s3Client,
 		S3Bucket: s3Bucket,

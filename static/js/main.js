@@ -1,3 +1,5 @@
+/* Mobile Sidebar Start */
+
 function openSidebar() {
   const sidebar = document.getElementById("mobileSidebar");
   const backdrop = document.getElementById("mobileBackdrop");
@@ -34,3 +36,13 @@ function closeSidebar() {
     sidebar.classList.add("hidden");
   }, 300);
 }
+
+// ✅ Allow clicking backdrop to close
+document.addEventListener("DOMContentLoaded", () => {
+  const backdrop = document.getElementById("mobileBackdrop");
+  if (backdrop) {
+    backdrop.addEventListener("click", closeSidebar);
+  }
+});
+
+/* Mobile Sidebar Start */

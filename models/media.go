@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -15,7 +16,7 @@ type Media struct {
 	FileName     string
 	ThumbnailURL string
 	FullURL      string
-	GalleryID    int
+	GalleryID    sql.NullInt32
 	Position     int
 }
 
@@ -24,11 +25,19 @@ type MediaModel struct {
 }
 
 // Insert adds a new media file and links it to a gallery
-
-func (m *MediaModel) Insert(fileName, fullURL, thumbURL string, galleryID, position int) error {
+func (m *MediaModel) Insert(
+	filename string,
+	url string,
+	thumbURL string,
+	galleryID int,
+	position int,
+) error {
 	_, err := m.DB.Exec(context.Background(),
-		"INSERT INTO media (file_name, full_url,  thumbnail_url, gallery_id, position) VALUES ($1, $2, $3, $4, $5)",
-		fileName, fullURL, thumbURL, galleryID, position)
+		`INSERT INTO media (
+			file_name, full_url, thumbnail_url, gallery_id, position
+		) VALUES ($1, $2, $3, $4, $5)`,
+		filename, url, thumbURL, galleryID, position)
+
 	return err
 }
 
@@ -55,17 +64,26 @@ func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 }
 
 // GetByID retrieves a single media file by its ID
+
 func (m *MediaModel) GetByID(id int) (*Media, error) {
 	var media Media
-	err := m.DB.QueryRow(context.Background(),
-		`SELECT id, file_name, thumbnail_url, full_url, position
-		FROM media
-		WHERE gallery_id = $1
-		ORDER BY position ASC`, id).
-		Scan(&media.ID, &media.FileName, &media.ThumbnailURL, &media.FullURL, &media.GalleryID)
+
+	query := `SELECT id, file_name, full_url, thumbnail_url, position, gallery_id FROM media WHERE id = $1`
+
+	err := m.DB.QueryRow(context.Background(), query, id).Scan(
+		&media.ID,
+		&media.FileName,
+		&media.FullURL,
+		&media.ThumbnailURL,
+		&media.Position,
+		&media.GalleryID,
+	)
+
 	if err != nil {
+		log.Printf("❌ GetByID failed: %v", err)
 		return nil, err
 	}
+
 	return &media, nil
 }
 
@@ -262,4 +280,87 @@ func (m *MediaModel) UpdatePositionsInBulk(galleryID int, mediaIDs []int) error 
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (m *MediaModel) UpdatePositionsForProject(projectID int, mediaIDs []int) error {
+	ctx := context.Background()
+	tx, err := m.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Clear all positions first
+	ids := make([]interface{}, len(mediaIDs))
+	placeholders := make([]string, len(mediaIDs))
+	for i, id := range mediaIDs {
+		ids[i] = id
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+	_, err = tx.Exec(ctx,
+		fmt.Sprintf(
+			`UPDATE media SET position = NULL
+			 WHERE id IN (%s) AND project_id = $%d`,
+			strings.Join(placeholders, ","), len(mediaIDs)+1,
+		),
+		append(ids, projectID)...,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to clear media positions: %w", err)
+	}
+
+	// Reassign unique positions
+	position := 0
+	seen := make(map[int]bool)
+	for _, mediaID := range mediaIDs {
+		if seen[mediaID] {
+			continue
+		}
+		seen[mediaID] = true
+
+		_, err := tx.Exec(ctx,
+			`UPDATE media SET position = $1 WHERE id = $2 AND project_id = $3`,
+			position, mediaID, projectID)
+		if err != nil {
+			return fmt.Errorf("failed to update media %d: %w", mediaID, err)
+		}
+		position++
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (m *MediaModel) GetNextProjectPosition(projectID int) (int, error) {
+	var pos int
+	err := m.DB.QueryRow(context.Background(),
+		`SELECT COALESCE(MAX(position), -1) + 1 FROM media WHERE project_id = $1`,
+		projectID).Scan(&pos)
+	return pos, err
+}
+
+func (m *MediaModel) InsertProjectMedia(
+	fileName, url, thumbURL string,
+	projectID int,
+	position int,
+) (int, error) {
+	var mediaID int
+
+	err := m.DB.QueryRow(context.Background(),
+		`INSERT INTO media (
+			file_name, full_url, thumbnail_url, project_id, position
+		) VALUES ($1, $2, $3, $4, $5)
+		RETURNING id`,
+		fileName, url, thumbURL, projectID, position).Scan(&mediaID)
+
+	if err != nil {
+		return 0, err
+	}
+
+	// ✅ Insert into project_media join table
+	_, err = m.DB.Exec(context.Background(),
+		`INSERT INTO project_media (project_id, media_id)
+		 VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		projectID, mediaID)
+
+	return mediaID, err
 }

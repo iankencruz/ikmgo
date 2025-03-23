@@ -1,0 +1,200 @@
+{{ define "content" }}
+<h1 class="text-2xl font-bold mb-6">Edit Project: {{ .Project.Title }}</h1>
+
+<!-- Form: Title + Description -->
+<form
+  hx-post="/admin/project/edit/{{ .Project.ID }}"
+  class="space-y-6 bg-white border border-gray-200 rounded-lg p-6 mb-10"
+>
+  <div>
+    <label for="title" class="block font-medium text-gray-700">Title</label>
+    <input
+      type="text"
+      name="title"
+      value="{{ .Project.Title }}"
+      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+    />
+  </div>
+
+  <div>
+    <label for="description" class="block font-medium text-gray-700"
+      >Description</label
+    >
+    <textarea
+      name="description"
+      rows="4"
+      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+    >
+{{ .Project.Description }}</textarea
+    >
+  </div>
+
+  <button
+    type="submit"
+    class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 shadow"
+  >
+    Save Changes
+  </button>
+</form>
+
+<!-- Cover Image Preview + Modal Trigger -->
+<div class="mb-10">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold">Cover Image</h2>
+    <button
+      type="button"
+      onclick="document.getElementById('coverModal').classList.remove('hidden')"
+      class="text-sm text-indigo-600 hover:underline"
+    >
+      Change Cover
+    </button>
+  </div>
+
+  <div id="cover-preview">
+    {{ if .Project.CoverImageID }}
+    <img src="{{ .Project.CoverImageURL }}" class="w-full rounded shadow" />
+    {{ else }}
+    <div
+      class="w-full max-w-md h-40 flex items-center justify-center bg-gray-100 text-gray-500 border rounded border-dashed"
+    >
+      No cover image selected
+    </div>
+    {{ end }}
+  </div>
+</div>
+
+<!-- Upload Media Form -->
+<h2 class="text-xl font-semibold mt-10 mb-4">Upload Media</h2>
+<form
+  hx-post="/admin/project/media/upload"
+  hx-target="#sortableGrid"
+  hx-swap="afterbegin"
+  enctype="multipart/form-data"
+  onsubmit="return false;"
+>
+  <input type="file" name="files" multiple />
+  <input type="hidden" name="project_id" value="{{ .Project.ID }}" />
+  <input type="hidden" name="display_mode" id="display_mode" value="grid" />
+  <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded mt-2">
+    Upload
+  </button>
+</form>
+
+<!-- Reorder Header + View Toggle -->
+<div class="flex justify-between items-center mt-8">
+  <h2 class="text-xl font-semibold">Reorder Images</h2>
+</div>
+
+<!-- Sortable Grid -->
+<div
+  id="sortableGrid"
+  class="sortable grid grid-cols-3 gap-4 mt-4"
+  data-project="{{ .Project.ID }}"
+>
+  {{ range .Media }}
+  <div
+    class="sortable-item border border-gray-300 p-2 rounded shadow"
+    data-id="{{ .ID }}"
+    data-project="{{ $.Project.ID }}"
+  >
+    <img
+      src="{{ .ThumbnailURL }}"
+      class="rounded-lg object-cover aspect-video w-full"
+    />
+    <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
+    <div class="flex justify-between mt-2 text-sm">
+      <button
+        hx-delete="/admin/media/{{ .ID }}"
+        hx-confirm="Are you sure?"
+        hx-target="closest div"
+        hx-swap="outerHTML"
+        class="text-red-500"
+      >
+        Delete
+      </button>
+      <button
+        hx-post="/admin/project/{{ $.Project.ID }}/cover"
+        hx-vals='{"media_id": "{{ .ID }}"}'
+        hx-target="#cover-preview"
+        hx-swap="innerHTML"
+        class="text-indigo-500"
+      >
+        Set as Cover
+      </button>
+    </div>
+  </div>
+  {{ end }}
+</div>
+
+<!-- Cover Modal -->
+<div
+  id="coverModal"
+  class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/50"
+  role="dialog"
+  aria-modal="true"
+>
+  <div class="flex min-h-full items-center justify-center p-4">
+    <div class="bg-white w-full max-w-4xl rounded-lg shadow-lg overflow-hidden">
+      <div class="p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">
+          Select Cover Image
+        </h3>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+          {{ range .Media }}
+          <button
+            hx-post="/admin/project/{{ $.Project.ID }}/cover"
+            hx-vals='{"media_id": "{{ .ID }}"}'
+            hx-target="#cover-preview"
+            hx-swap="innerHTML"
+            onclick="document.getElementById('coverModal').classList.add('hidden')"
+            class="aspect-square overflow-hidden rounded border hover:ring-2 hover:ring-indigo-500"
+          >
+            <img src="{{ .ThumbnailURL }}" class="object-cover w-full h-full" />
+          </button>
+          {{ end }}
+        </div>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 flex justify-end">
+        <button
+          type="button"
+          onclick="document.getElementById('coverModal').classList.add('hidden')"
+          class="px-4 py-2 bg-white border rounded-md text-gray-700 hover:bg-gray-100"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SortableJS Script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const sortableGrid = document.querySelector(".sortable");
+
+    new Sortable(sortableGrid, {
+      animation: 150,
+      onEnd: function () {
+        const mediaIDs = Array.from(
+          sortableGrid.querySelectorAll(".sortable-item"),
+        ).map((el) => parseInt(el.dataset.id, 10));
+        const projectID = parseInt(sortableGrid.dataset.project, 10);
+
+        fetch("/admin/project/update-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: projectID,
+            order: mediaIDs,
+          }),
+        }).then((res) => {
+          if (!res.ok) {
+            console.error("❌ Failed to update media positions");
+          }
+        });
+      },
+    });
+  });
+</script>
+{{ end }}

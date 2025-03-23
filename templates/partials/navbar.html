@@ -21,6 +21,20 @@
       <div class="absolute top-0 left-full flex w-16 justify-center pt-5">
         <button type="button" class="-m-2.5 p-2.5" onclick="closeSidebar()">
           <span class="sr-only">Close sidebar</span>
+          <svg
+            class="h-6 w-6 text-white cursor-pointer"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
       </div>
 
@@ -33,13 +47,13 @@
 
         <!-- MOBILE NAV -->
         <nav class="flex flex-1 flex-col mt-8">
-          <ul role="list" class="flex flex-1 flex-col gap-y-4">
+          <ul role="list" class="flex flex-1 flex-col gap-y-2">
             <li>
-              <ul role="list" class="-mx-2 space-y-1">
+              <ul role="list" class="space-y-1">
                 <li>
                   <a
                     href="/"
-                    class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                    class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "home" }}
                       text-indigo-600
                     {{ else }}
@@ -52,7 +66,7 @@
                 <li>
                   <a
                     href="/about"
-                    class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                    class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "about" }}
                       text-indigo-600
                     {{ else }}
@@ -65,7 +79,7 @@
                 <li>
                   <a
                     href="/galleries"
-                    class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                    class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "galleries" }}
                       text-indigo-600
                     {{ else }}
@@ -77,8 +91,22 @@
                 </li>
                 <li>
                   <a
+                    href="/projects"
+                    class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
+                  {{ if eq .ActiveLink "projects" }}
+                    text-indigo-600
+                  {{ else }}
+                    text-gray-700 hover:text-indigo-600 hover:
+                  {{ end }}'
+                  >
+                    Projects
+                  </a>
+                </li>
+
+                <li>
+                  <a
                     href="/contact"
-                    class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                    class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "contact" }}
                     text-indigo-600
                   {{ else }}
@@ -161,20 +189,20 @@
 <!-- STATIC DESKTOP SIDEBAR -->
 <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
   <div
-    class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6"
+    class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-12"
   >
     <!-- Logo -->
     <div class="flex h-16 shrink-0 items-center">
       <h2>IKM</h2>
     </div>
     <nav class="flex flex-1 flex-col mt-8">
-      <ul role="list" class="flex flex-1 flex-col gap-y-4">
+      <ul role="list" class="flex flex-1 flex-col gap-y-2">
         <li>
-          <ul role="list" class="-mx-2 space-y-1">
+          <ul role="list" class="space-y-1">
             <li>
               <a
                 href="/"
-                class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                 {{ if eq .ActiveLink "home" }}
                   text-indigo-600
                 {{ else }}
@@ -187,7 +215,7 @@
             <li>
               <a
                 href="/about"
-                class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "about" }}
                     text-indigo-600
                   {{ else }}
@@ -201,7 +229,7 @@
             <li>
               <a
                 href="/galleries"
-                class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "galleries" }}
                     text-indigo-600
                   {{ else }}
@@ -211,11 +239,24 @@
                 Galleries
               </a>
             </li>
+            <li>
+              <a
+                href="/projects"
+                class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
+                  {{ if eq .ActiveLink "projects" }}
+                    text-indigo-600
+                  {{ else }}
+                    text-gray-700 hover:text-indigo-600 hover:
+                  {{ end }}'
+              >
+                Projects
+              </a>
+            </li>
 
             <li>
               <a
                 href="/contact"
-                class='group flex gap-x-3 rounded-md  p-2 text-sm/6 font-semibold 
+                class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "contact" }}
                     text-indigo-600
                   {{ else }}

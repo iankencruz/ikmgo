@@ -53,6 +53,9 @@ func LoadTemplates() error {
 		templateName := strings.TrimPrefix(path, basePath)
 		TemplateCache[templateName] = t
 		log.Printf("✅ Cached template: %s", templateName)
+		for _, tmpl := range t.Templates() {
+			log.Printf("  └─ contains block: %s", tmpl.Name())
+		}
 		return nil
 	})
 
@@ -122,4 +125,38 @@ func (app *Application) renderToWriter(w io.Writer, r *http.Request, tmpl string
 	}
 
 	return t.ExecuteTemplate(w, layout, data)
+}
+
+func (app *Application) renderHTMX(w http.ResponseWriter, baseTemplate string, block string, data interface{}) {
+	tmpl, ok := TemplateCache[baseTemplate]
+	if !ok {
+		http.Error(w, "Template not found: "+baseTemplate, http.StatusInternalServerError)
+		return
+	}
+
+	err := tmpl.ExecuteTemplate(w, block, data)
+	if err != nil {
+		log.Printf("❌ Error rendering HTMX block '%s' from %s: %v", block, baseTemplate, err)
+		http.Error(w, "Render error: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (app *Application) renderPartialHTMX(w io.Writer, partialName string, data interface{}) {
+	for _, tmpl := range TemplateCache {
+		if tmpl.Lookup(partialName) != nil {
+			err := tmpl.ExecuteTemplate(w, partialName, data)
+			if err != nil {
+				log.Printf("❌ Error rendering HTMX partial %s: %v", partialName, err)
+				if rw, ok := w.(http.ResponseWriter); ok {
+					http.Error(rw, "Render error", http.StatusInternalServerError)
+				}
+			}
+			return
+		}
+	}
+
+	log.Printf("❌ HTMX partial not found: %s", partialName)
+	if rw, ok := w.(http.ResponseWriter); ok {
+		http.Error(rw, "Partial not found", http.StatusInternalServerError)
+	}
 }

@@ -26,40 +26,75 @@ func LoadTemplates() error {
 		"admin":  filepath.Join(basePath, "admin_base.html"),
 	}
 
-	partials, err := filepath.Glob(filepath.Join(basePath, "partials/*.html"))
-	if err != nil {
-		return fmt.Errorf("failed to glob partials: %w", err)
-	}
+	var templates []string
+	var partials []string
 
-	err = filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || strings.Contains(path, "/partials/") {
+	// Walk through the templates folder and gather all template files
+	err := filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
 			return err
 		}
 
+		// Ignore directories
+		if info.IsDir() {
+			return nil
+		}
+
+		if strings.Contains(path, "/partials/") {
+			partials = append(partials, path)
+		} else {
+			templates = append(templates, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// ✅ 1. Load full-page templates with base layout
+	for _, tmplPath := range templates {
 		var selectedBase string
-		if strings.Contains(path, "admin/") {
+		if strings.Contains(tmplPath, "admin/") {
 			selectedBase = baseTemplates["admin"]
 		} else {
 			selectedBase = baseTemplates["public"]
 		}
 
-		files := append([]string{selectedBase, path}, partials...)
-		t, err := template.New(filepath.Base(path)).Funcs(funcMap).ParseFiles(files...)
+		files := append([]string{selectedBase, tmplPath}, partials...)
+		t, err := template.New(filepath.Base(tmplPath)).Funcs(funcMap).ParseFiles(files...)
 		if err != nil {
-			log.Printf("❌ Error loading template %s: %v", path, err)
+			log.Printf("❌ Error loading template %s: %v", tmplPath, err)
 			return err
 		}
 
-		templateName := strings.TrimPrefix(path, basePath)
+		templateName := strings.TrimPrefix(tmplPath, basePath)
 		TemplateCache[templateName] = t
-		log.Printf("✅ Cached template: %s", templateName)
-		for _, tmpl := range t.Templates() {
-			log.Printf("  └─ contains block: %s", tmpl.Name())
-		}
-		return nil
-	})
+		// logging templates
+		// log.Printf("✅ Cached template: %s", templateName)
+		// for _, tmpl := range t.Templates() {
+		// 	log.Printf("  └─ contains block: %s", tmpl.Name())
+		// }
+	}
 
-	return err
+	// ✅ 2. Load partials as root templates (individually)
+	for _, partialPath := range partials {
+		t, err := template.New(filepath.Base(partialPath)).Funcs(funcMap).ParseFiles(partialPath)
+		if err != nil {
+			log.Printf("❌ Error loading partial %s: %v", partialPath, err)
+			continue
+		}
+
+		partialName := strings.TrimPrefix(partialPath, basePath)
+		TemplateCache[partialName] = t
+
+		// Logging Partials
+		// log.Printf("✅ Cached partial: %s", partialName)
+		// for _, tmpl := range t.Templates() {
+		// 	log.Printf("  └─ contains block: %s", tmpl.Name())
+		// }
+	}
+
+	return nil
 }
 
 func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl string, data map[string]interface{}) {
@@ -141,12 +176,25 @@ func (app *Application) renderHTMX(w http.ResponseWriter, baseTemplate string, b
 	}
 }
 
-func (app *Application) renderPartialHTMX(w io.Writer, partialName string, data interface{}) {
-	for _, tmpl := range TemplateCache {
-		if tmpl.Lookup(partialName) != nil {
-			err := tmpl.ExecuteTemplate(w, partialName, data)
+func (app *Application) renderPartialHTMX(w io.Writer, block string, data interface{}) {
+	// Exact match: if the partial is loaded as a root template
+	if tmpl, ok := TemplateCache[block]; ok {
+		err := tmpl.ExecuteTemplate(w, block, data)
+		if err != nil {
+			log.Printf("❌ Render error (exact): %s - %v", block, err)
+			if rw, ok := w.(http.ResponseWriter); ok {
+				http.Error(rw, "Render error", http.StatusInternalServerError)
+			}
+		}
+		return
+	}
+
+	// Fallback: search for block inside all templates
+	for name, tmpl := range TemplateCache {
+		if tmpl.Lookup(block) != nil {
+			err := tmpl.ExecuteTemplate(w, block, data)
 			if err != nil {
-				log.Printf("❌ Error rendering HTMX partial %s: %v", partialName, err)
+				log.Printf("❌ Render error (fallback in %s -> %s): %v", name, block, err)
 				if rw, ok := w.(http.ResponseWriter); ok {
 					http.Error(rw, "Render error", http.StatusInternalServerError)
 				}
@@ -155,7 +203,7 @@ func (app *Application) renderPartialHTMX(w io.Writer, partialName string, data 
 		}
 	}
 
-	log.Printf("❌ HTMX partial not found: %s", partialName)
+	log.Printf("❌ HTMX partial not found: %s", block)
 	if rw, ok := w.(http.ResponseWriter); ok {
 		http.Error(rw, "Partial not found", http.StatusInternalServerError)
 	}

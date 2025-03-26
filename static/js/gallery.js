@@ -1,36 +1,29 @@
-document.addEventListener("DOMContentLoaded", function () {
+function initLightbox() {
   const modal = document.getElementById("lightboxModal");
   const modalImg = document.getElementById("lightboxImg");
-  const galleryImages = Array.from(document.querySelectorAll("#gallery img"));
+  const galleryImages = Array.from(document.querySelectorAll("img[data-full]"));
 
   if (!modal || !modalImg || galleryImages.length === 0) {
-    console.error("❌ Lightbox elements missing or no images found.");
+    console.warn("⚠️ Lightbox: missing modal or no images to bind.");
     return;
   }
 
   let currentIndex = 0;
-  let currentGalleryID = null;
 
   function openLightbox(index) {
     currentIndex = index;
+    const img = galleryImages[currentIndex];
+
+    const fullResUrl = img.getAttribute("data-full");
+    modalImg.src = fullResUrl;
     modal.classList.remove("hidden");
 
-    const fullResUrl = galleryImages[currentIndex].getAttribute("data-full");
-    currentGalleryID = galleryImages[currentIndex].getAttribute("data-gallery");
-
-    if (!fullResUrl || !currentGalleryID) {
-      console.error("❌ Missing data attributes for image index:", index);
-      return;
-    }
-
-    modalImg.src = fullResUrl;
-    console.log(
-      `✅ Opening lightbox for gallery ${currentGalleryID}, image ${fullResUrl}`,
-    );
+    console.log(`✅ Opening lightbox: ${fullResUrl}`);
   }
 
   function closeLightbox() {
     modal.classList.add("hidden");
+    modalImg.src = "";
     console.log("✅ Lightbox closed.");
   }
 
@@ -59,5 +52,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (e.target === modal) closeLightbox();
   });
 
-  console.log("✅ Lightbox initialized.");
+  console.log("✅ Lightbox bindings complete");
+}
+
+// 🧠 Run on initial page load
+document.addEventListener("DOMContentLoaded", initLightbox);
+
+// 🔁 Run after any HTMX swap
+document.body.addEventListener("htmx:afterSwap", () => {
+  initLightbox();
 });

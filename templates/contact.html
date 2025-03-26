@@ -23,6 +23,7 @@
         hx-target="body"
         hx-swap="afterbegin"
         hx-trigger="verified"
+        hx-on:afterSwap="console.log('Swapped')"
       >
         <div class="grid grid-cols-12 gap-x-2">
           <div class="col-span-6">
@@ -112,11 +113,7 @@
 </div>
 
 <script>
-  // Manually run reCAPTCHA and dispatch 'verified' for HTMX
   function runRecaptcha() {
-    console.log("🚀 Starting reCAPTCHA v3...");
-
-    // Ensure the script is loaded & domain is valid
     grecaptcha.ready(function () {
       grecaptcha
         .execute("6Ldh3fEqAAAAAJgLcZAj854loLXuZePJ4yt4ai9x", {
@@ -124,21 +121,48 @@
         })
         .then(function (token) {
           if (!token) {
-            console.error("❌ reCAPTCHA token is empty");
-            alert("Failed to verify reCAPTCHA. Please refresh and try again.");
+            alert("Failed to verify reCAPTCHA.");
             return;
           }
-          console.log("✅ Got reCAPTCHA token:", token);
 
-          // Insert the token into the hidden input
           document.getElementById("g-recaptcha-response").value = token;
-
-          // Dispatch the custom \"verified\" event
-          // HTMX sees hx-trigger=\"verified\" on the form and submits
           const event = new Event("verified");
           document.getElementById("contact-form").dispatchEvent(event);
         });
     });
   }
+
+  // ✅ Global handler for HTMX swaps
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (
+      evt.detail &&
+      evt.detail.xhr &&
+      evt.detail.xhr.responseText.includes("contact-success")
+    ) {
+      const alertEl = document.getElementById("contact-success");
+
+      // 🕓 Fade out after 7 seconds
+      setTimeout(() => {
+        if (!alertEl) return;
+
+        alertEl.classList.remove("opacity-100");
+        alertEl.classList.add("opacity-0");
+
+        // ⏳ Remove after fade transition
+        setTimeout(() => alertEl.remove(), 700); // match transition duration
+      }, 7000);
+
+      // 🧼 Reset form
+      document.getElementById("contact-form")?.reset();
+    }
+  });
 </script>
+
 {{ end }}
+
+<!-- -->
+{{define "contact_success"}}
+<!-- -->
+{{ template "partials/contact_success.html" . }}
+<!---->
+{{end}}

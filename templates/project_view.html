@@ -1,14 +1,14 @@
-{{define "title" }} {{ .Project.Title }} {{ end }}
-<!-- content start-->
-{{ define "content" }}
-<div class="max-w-4xl mx-auto">
+{{ define "title" }}{{ .Project.Title }}{{ end }} {{ define "content" }}
+<div class="max-w-4xl mx-auto px-8">
   <!-- Hero Media Section -->
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-8">
     {{ range .HeroMedia }}
     <img
       src="{{ .ThumbnailURL }}"
+      data-full="{{ .FullURL }}"
       alt="{{ .FileName }}"
-      class="first:col-span-3 first:order-last first:h-[32rem] first:pt-8 rounded shadow object-cover w-full aspect-square"
+      class="first:col-span-3 first:order-last first:h-[32rem] first:pt-8 shadow object-cover w-full aspect-square cursor-pointer"
+      loading="lazy"
     />
     {{ end }}
   </div>
@@ -18,7 +18,38 @@
   {{ if .Project.Description }}
   <p class="mb-8 text-gray-700">{{ .Project.Description }}</p>
   {{ end }}
-  <!-- Project Template-->
+
+  <!-- Project Template -->
   {{ template "project_component" . }}
+
+  <!-- 🔥 Lightbox Modal (reuse from gallery_component.html) -->
+  <div
+    id="lightboxModal"
+    class="fixed inset-0 flex items-center justify-center bg-black/80 hidden z-50"
+  >
+    <button
+      id="lightboxClose"
+      class="absolute top-4 right-8 text-white text-3xl font-bold px-2 cursor-pointer"
+    >
+      &times;
+    </button>
+    <button
+      id="lightboxPrev"
+      class="absolute left-4 text-white text-3xl font-bold px-2 cursor-pointer"
+    >
+      &#10094;
+    </button>
+    <button
+      id="lightboxNext"
+      class="absolute right-4 text-white text-3xl font-bold px-2 cursor-pointer"
+    >
+      &#10095;
+    </button>
+    <img
+      id="lightboxImg"
+      alt="Lightbox Image"
+      class="max-h-[80vh] max-w-[90vw] mx-auto"
+    />
+  </div>
 </div>
 {{ end }}

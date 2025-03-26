@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,7 +38,9 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 
 	// Fetch associated images sorted by position in ASCENDING order
 	rows, err := g.DB.Query(context.Background(),
-		"SELECT id, file_name, thumbnail_url,  full_url, position FROM media WHERE gallery_id = $1 ORDER BY position ASC", gallery.ID)
+		`SELECT id, m.file_name, m.thumbnail_url,  m.full_url, gm.position FROM media m 
+		 JOIN gallery_media gm ON m.id = gm.media_id
+		 WHERE gm.gallery_id = $1 ORDER BY gm.position ASC`, gallery.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -112,7 +115,7 @@ func (g *GalleryModel) Create(title string) error {
 func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
 		`SELECT g.id, g.title, g.cover_image_id, m.full_url AS cover_image_url,
-                (SELECT COUNT(*) FROM media WHERE media.gallery_id = g.id) AS media_count
+                (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
          FROM galleries g
          LEFT JOIN media m ON g.cover_image_id = m.id
          WHERE g.published = TRUE
@@ -152,7 +155,7 @@ func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
 		`SELECT g.id, g.title, g.cover_image_id, g.published, m.full_url AS cover_image_url,
-                (SELECT COUNT(*) FROM media WHERE media.gallery_id = g.id) AS media_count
+                (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
          FROM galleries g
          LEFT JOIN media m ON g.cover_image_id = m.id
          ORDER BY g.id ASC`)
@@ -241,4 +244,111 @@ func (g *GalleryModel) Delete(id string) error {
 func (g *GalleryModel) SetPublished(id int, published bool) error {
 	_, err := g.DB.Exec(context.Background(), "UPDATE galleries SET published=$1 WHERE id=$2", published, id)
 	return err
+}
+
+// GetMedia returns all media linked to a gallery via the gallery_media join table
+func (g *GalleryModel) GetMedia(galleryID int) ([]*Media, error) {
+	rows, err := g.DB.Query(context.Background(), `
+		SELECT m.id, m.file_name, m.thumbnail_url, m.full_url, gm.position
+		FROM gallery_media gm
+		JOIN media m ON gm.media_id = m.id
+		WHERE gm.gallery_id = $1
+		ORDER BY gm.position ASC
+	`, galleryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var media []*Media
+	for rows.Next() {
+		var m Media
+		if err := rows.Scan(&m.ID, &m.FileName, &m.ThumbnailURL, &m.FullURL, &m.Position); err != nil {
+			return nil, err
+		}
+		media = append(media, &m)
+	}
+
+	return media, nil
+}
+
+// AttachMedia links a media item to a gallery with an optional position
+func (g *GalleryModel) AttachMedia(galleryID, mediaID, position int) error {
+	_, err := g.DB.Exec(context.Background(), `
+		INSERT INTO gallery_media (gallery_id, media_id, position)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (gallery_id, media_id) DO UPDATE
+		SET position = EXCLUDED.position
+	`, galleryID, mediaID, position)
+	return err
+}
+
+func (g *GalleryModel) ReorderMedia(galleryID, mediaID, newPosition int) error {
+	tx, err := g.DB.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	var currentPosition int
+	err = tx.QueryRow(context.Background(), `
+		SELECT position FROM gallery_media
+		WHERE gallery_id = $1 AND media_id = $2
+	`, galleryID, mediaID).Scan(&currentPosition)
+
+	if err != nil {
+		return fmt.Errorf("failed to fetch current position: %w", err)
+	}
+
+	// No position change
+	if currentPosition == newPosition {
+		return nil
+	}
+
+	// Move everything else to make room
+	if currentPosition < newPosition {
+		_, err = tx.Exec(context.Background(), `
+			UPDATE gallery_media
+			SET position = position - 1
+			WHERE gallery_id = $1 AND position > $2 AND position <= $3
+		`, galleryID, currentPosition, newPosition)
+	} else {
+		_, err = tx.Exec(context.Background(), `
+			UPDATE gallery_media
+			SET position = position + 1
+			WHERE gallery_id = $1 AND position >= $3 AND position < $2
+		`, galleryID, newPosition, currentPosition)
+	}
+	if err != nil {
+		return err
+	}
+
+	// Move the target
+	_, err = tx.Exec(context.Background(), `
+		UPDATE gallery_media
+		SET position = $1
+		WHERE gallery_id = $2 AND media_id = $3
+	`, newPosition, galleryID, mediaID)
+
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(context.Background())
+}
+
+func (g *GalleryModel) GetNextPosition(galleryID int) (int, error) {
+	var maxPosition int
+
+	err := g.DB.QueryRow(context.Background(), `
+		SELECT COALESCE(MAX(position), -1)
+		FROM gallery_media
+		WHERE gallery_id = $1
+	`, galleryID).Scan(&maxPosition)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return maxPosition + 1, nil
 }

@@ -252,7 +252,7 @@ func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		media, err := app.MediaModel.GetByGalleryID(galleryID)
+		media, err := app.GalleryModel.GetMedia(galleryID)
 		if err != nil {
 			log.Printf("❌ Error fetching media for gallery %d: %v", galleryID, err)
 			continue
@@ -285,7 +285,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	media, err := app.MediaModel.GetByGalleryID(id)
+	media, err := app.GalleryModel.GetMedia(id)
 	if err != nil {
 		log.Printf("❌ Error fetching media for gallery %d: %v", id, err)
 	}
@@ -461,18 +461,6 @@ func (app *Application) SetProjectCoverImage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	log.Printf("🔍 Looking up media ID = %d", mediaID)
-
-	rows, err := app.DB.Query(context.Background(), "SELECT id, file_name FROM media WHERE id = $1", mediaID)
-	if err != nil {
-		log.Printf("❌ Manual SELECT failed: %v", err)
-	} else if !rows.Next() {
-		log.Printf("❌ Media ID %d not found in DB", mediaID)
-	} else {
-		log.Printf("✅ Media %d found!", mediaID)
-	}
-
-	// 🔥 This step might be failing:
 	err = app.ProjectModel.SetCoverImage(projectID, mediaID)
 	if err != nil {
 		log.Printf("❌ Error setting project cover image: %v", err)
@@ -480,7 +468,6 @@ func (app *Application) SetProjectCoverImage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// 🔥 Or maybe this fails:
 	media, err := app.MediaModel.GetByID(mediaID)
 	if err != nil {
 		log.Printf("❌ Cover image not found: %v", err)
@@ -607,7 +594,7 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		thumbName := "thumb_" + base
 		mediumName := "medium_" + base
 
-		img, err := imaging.Decode(file)
+		img, err := imaging.Decode(file, imaging.AutoOrientation(true))
 		if err != nil {
 			log.Printf("❌ Error decoding image: %v", err)
 			continue
@@ -652,32 +639,36 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		fullURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
 		thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + thumbKey
 
-		position, err := app.MediaModel.GetNextPosition(galleryID)
-		if err != nil {
-			log.Printf("❌ Failed to get position: %v", err)
-			continue
-		}
-
-		err = app.MediaModel.Insert(fileName, fullURL, thumbURL, galleryID, position)
+		// Insert media (no galleryID)
+		mediaID, err := app.MediaModel.InsertAndReturnID(fileName, fullURL, thumbURL)
 		if err != nil {
 			log.Printf("❌ DB insert failed: %v", err)
 			continue
 		}
 
-		var rendered bytes.Buffer
-		err = app.renderToWriter(&rendered, r, "partials/media_item.html", map[string]interface{}{
-			"ID":           fileName,
-			"FileName":     fileName,
-			"ThumbnailURL": thumbURL,
-			"FullURL":      fullURL,
-			"DisplayMode":  displayMode,
-		})
+		// Get next position from join table
+		position, err := app.GalleryModel.GetNextPosition(galleryID)
 		if err != nil {
-			log.Printf("❌ Render error: %v", err)
+			log.Printf("❌ Failed to get next position: %v", err)
 			continue
 		}
 
-		outputBuffer.Write(rendered.Bytes())
+		// Attach media to gallery
+		err = app.GalleryModel.AttachMedia(galleryID, mediaID, position)
+		if err != nil {
+			log.Printf("❌ Failed to attach media: %v", err)
+			continue
+		}
+
+		media := &models.Media{
+			ID:           mediaID,
+			FileName:     fileName,
+			ThumbnailURL: thumbURL,
+			FullURL:      fullURL,
+		}
+
+		app.renderPartialHTMX(&outputBuffer, "partials/media_item.html", media)
+
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -685,6 +676,7 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 // Upload Project Media (POST)
+
 func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
@@ -695,11 +687,6 @@ func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		http.Error(w, "Invalid project ID", http.StatusBadRequest)
 		return
-	}
-
-	displayMode := r.FormValue("display_mode")
-	if displayMode == "" {
-		displayMode = "grid"
 	}
 
 	files := r.MultipartForm.File["files"]
@@ -719,14 +706,12 @@ func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Reques
 		}
 		defer file.Close()
 
-		// Build filenames
 		base := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), projectID, fileHeader.Filename)
 		fileName := base
 		thumbName := "thumb_" + base
 		mediumName := "medium_" + base
 
-		// Decode image
-		img, err := imaging.Decode(file)
+		img, err := imaging.Decode(file, imaging.AutoOrientation(true))
 		if err != nil {
 			log.Printf("❌ Error decoding image: %v", err)
 			continue
@@ -743,7 +728,6 @@ func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Reques
 		fileSize := fileHeader.Size
 		contentType := fileHeader.Header.Get("Content-Type")
 
-		// Upload original
 		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, fileKey, io.LimitReader(file, fileSize), fileSize, minio.PutObjectOptions{
 			ContentType:  contentType,
 			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
@@ -753,8 +737,8 @@ func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Reques
 			continue
 		}
 
-		// Upload medium
-		var mediumBuf bytes.Buffer
+		var mediumBuf, thumbBuf bytes.Buffer
+
 		if err := imaging.Encode(&mediumBuf, mediumImg, imaging.JPEG); err == nil {
 			app.S3Client.PutObject(ctx, app.S3Bucket, mediumKey, bytes.NewReader(mediumBuf.Bytes()), int64(mediumBuf.Len()), minio.PutObjectOptions{
 				ContentType:  "image/jpeg",
@@ -762,8 +746,6 @@ func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Reques
 			})
 		}
 
-		// Upload thumbnail
-		var thumbBuf bytes.Buffer
 		if err := imaging.Encode(&thumbBuf, thumbnailImg, imaging.JPEG); err == nil {
 			app.S3Client.PutObject(ctx, app.S3Bucket, thumbKey, bytes.NewReader(thumbBuf.Bytes()), int64(thumbBuf.Len()), minio.PutObjectOptions{
 				ContentType:  "image/jpeg",
@@ -774,36 +756,26 @@ func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Reques
 		fullURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
 		thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + thumbKey
 
-		// Get next project position
 		position, err := app.MediaModel.GetNextProjectPosition(projectID)
 		if err != nil {
 			log.Printf("❌ Failed to get project position: %v", err)
 			continue
 		}
 
-		// Insert media
 		mediaID, err := app.MediaModel.InsertProjectMedia(fileName, fullURL, thumbURL, projectID, position)
 		if err != nil {
 			log.Printf("❌ DB Project insert failed: %v", err)
 			continue
 		}
 
-		log.Printf("✅ Media %d inserted and linked to project %d", mediaID, projectID)
-
-		// Render partial
-		var rendered bytes.Buffer
-		err = app.renderToWriter(&rendered, r, "partials/media_item.html", map[string]interface{}{
-			"FileName":     fileName,
-			"ThumbnailURL": thumbURL,
-			"FullURL":      fullURL,
-			"DisplayMode":  displayMode,
-		})
-		if err != nil {
-			log.Printf("❌ Render error: %v", err)
-			continue
+		media := &models.Media{
+			ID:           mediaID,
+			FileName:     fileName,
+			FullURL:      fullURL,
+			ThumbnailURL: thumbURL,
 		}
 
-		outputBuffer.Write(rendered.Bytes())
+		app.renderPartialHTMX(&outputBuffer, "partials/media_item.html", media)
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -833,24 +805,7 @@ func (app *Application) About(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Email sending utility
-// func (app *Application) sendMail(from, to, subject, body string) error {
-// 	smtpHost := os.Getenv("SMTP_HOST")
-// 	smtpPort := os.Getenv("SMTP_PORT")
-// 	smtpUser := os.Getenv("SMTP_USER")
-// 	smtpPass := os.Getenv("SMTP_PASS")
-//
-// 	msg := []byte(fmt.Sprintf("Subject: %s\r\nFrom: %s\r\nTo: %s\r\n\r\n%s",
-// 		subject, from, to, body))
-//
-// 	auth := smtp.PlainAuth("", smtpUser, smtpPass, smtpHost)
-// 	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
-//
-// 	return smtp.SendMail(addr, auth, from, []string{to}, msg)
-// }
-
 // Contact Handler (GET + POST)
-
 func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 	// 1. Handle GET request - show contact form
 	if r.Method == http.MethodGet {
@@ -922,7 +877,9 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 	// 8. Everything succeeded
 	log.Printf("✅ Contact form submitted successfully by %s %s (%s)", form.FirstName, form.LastName, form.Email)
 
-	app.render(w, r, "partials/contact_success_modal.html", nil) // ✅ Correct
+	// app.render(w, r, "partials/contact_success_modal.html", nil) // ✅ Correct
+
+	app.renderPartialHTMX(w, "partials/contact_success_modal", nil)
 
 }
 
@@ -970,7 +927,7 @@ func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch media
-	media, err := app.MediaModel.GetByGalleryID(galleryID)
+	media, err := app.GalleryModel.GetMedia(galleryID)
 	if err != nil {
 		log.Printf("❌ Error fetching media: %v", err)
 		http.Error(w, "Error retrieving media", http.StatusInternalServerError)

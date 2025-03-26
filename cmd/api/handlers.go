@@ -209,11 +209,26 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data := map[string]interface{}{
-		"Title":   project.Title,
-		"Project": project,
-		"Media":   media,
+	log.Printf("✅ Project %d media count: %d", projectID, len(media))
+
+	var heroMedia []*models.Media
+	var restMedia []*models.Media
+
+	if len(media) > 4 {
+		heroMedia = media[:4]
+		restMedia = media[4:]
+	} else {
+		heroMedia = media
 	}
+
+	data := map[string]interface{}{
+		"Title":     project.Title,
+		"Project":   project,
+		"HeroMedia": heroMedia,
+		"Media":     restMedia, // remaining media
+	}
+
+	log.Printf("Project Media Count: %d", len(media))
 
 	app.render(w, r, "project_view.html", data)
 }

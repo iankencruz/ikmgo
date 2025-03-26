@@ -17,6 +17,8 @@ type Media struct {
 	ThumbnailURL string
 	FullURL      string
 	GalleryID    sql.NullInt32
+	MimeType     string
+	EmbedURL     *string
 	Position     int
 }
 

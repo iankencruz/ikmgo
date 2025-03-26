@@ -3,46 +3,72 @@
   id="project-gallery"
   class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1"
 >
-  {{ range .Media }}
+  {{ if not .Media }}
+  <p class="text-red-500">⚠️ No media to display.</p>
+  {{ end }} {{ range .Media }}
   <div class="relative aspect-square hover:bg-black/50 flex">
+    {{ if .EmbedURL }}
+    <!-- 🔗 Embedded Video (e.g. Vimeo/YouTube) -->
+    <iframe
+      src="{{ .EmbedURL }}"
+      class="absolute inset-0 w-full h-full rounded"
+      frameborder="0"
+      allow="autoplay; fullscreen; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+
+    {{ else if hasPrefix .MimeType "video/" }}
+    <!-- 🎥 Self-hosted Video -->
+    <video
+      class="absolute inset-0 w-full h-full object-cover rounded"
+      controls
+      preload="metadata"
+      poster="{{ .ThumbnailURL }}"
+    >
+      <source src="{{ .FullURL }}" type="{{ .MimeType }}" />
+      Your browser does not support the video tag.
+    </video>
+
+    {{ else }}
+    <!-- 🖼️ Image -->
     <img
       src="{{ .ThumbnailURL }}"
       data-full="{{ .FullURL }}"
-      data-project="{{ .ProjectID }}"
       alt="{{ .FileName }}"
-      class="absolute inset-0 w-full h-full object-cover cursor-pointer"
+      class="absolute inset-0 w-full h-full object-cover cursor-pointer rounded"
       loading="lazy"
+    />
+    {{ end }}
+  </div>
+  {{ end }}
+
+  <div
+    id="lightboxModal"
+    class="fixed inset-0 flex items-center justify-center bg-black/80 hidden z-50"
+  >
+    <button
+      id="lightboxClose"
+      class="absolute top-4 right-8 text-white text-3xl font-bold px-2 cursor-pointer"
+    >
+      &times;
+    </button>
+    <button
+      id="lightboxPrev"
+      class="absolute left-4 text-white text-3xl font-bold px-2 cursor-pointer"
+    >
+      &#10094;
+    </button>
+    <button
+      id="lightboxNext"
+      class="absolute right-4 text-white text-3xl font-bold px-2 cursor-pointer"
+    >
+      &#10095;
+    </button>
+    <img
+      id="lightboxImg"
+      alt="Lightbox Image"
+      class="max-h-[80vh] max-w-[90vw] mx-auto"
     />
   </div>
   {{ end }}
 </div>
-
-<div
-  id="lightboxModal"
-  class="fixed inset-0 flex items-center justify-center bg-black/80 hidden z-50"
->
-  <button
-    id="lightboxClose"
-    class="absolute top-4 right-8 text-white text-3xl font-bold px-2 cursor-pointer"
-  >
-    &times;
-  </button>
-  <button
-    id="lightboxPrev"
-    class="absolute left-4 text-white text-3xl font-bold px-2 cursor-pointer"
-  >
-    &#10094;
-  </button>
-  <button
-    id="lightboxNext"
-    class="absolute right-4 text-white text-3xl font-bold px-2 cursor-pointer"
-  >
-    &#10095;
-  </button>
-  <img
-    id="lightboxImg"
-    alt="Lightbox Image"
-    class="max-h-[80vh] max-w-[90vw] mx-auto"
-  />
-</div>
-{{ end }}

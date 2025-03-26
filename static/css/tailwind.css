@@ -652,6 +652,9 @@
   .gap-1 {
     gap: calc(var(--spacing) * 1);
   }
+  .gap-2 {
+    gap: calc(var(--spacing) * 2);
+  }
   .gap-3 {
     gap: calc(var(--spacing) * 3);
   }
@@ -1284,6 +1287,26 @@
   .placeholder\:text-gray-400 {
     &::placeholder {
       color: var(--color-gray-400);
+    }
+  }
+  .first\:order-last {
+    &:first-child {
+      order: 9999;
+    }
+  }
+  .first\:col-span-3 {
+    &:first-child {
+      grid-column: span 3 / span 3;
+    }
+  }
+  .first\:h-\[32rem\] {
+    &:first-child {
+      height: 32rem;
+    }
+  }
+  .first\:pt-8 {
+    &:first-child {
+      padding-top: calc(var(--spacing) * 8);
     }
   }
   .checked\:border-indigo-600 {

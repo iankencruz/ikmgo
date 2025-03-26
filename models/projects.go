@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -88,7 +89,7 @@ func (p *ProjectModel) GetByID(id int) (*Project, error) {
 // GetMedia returns media linked to the project via the join table
 func (p *ProjectModel) GetMedia(projectID int) ([]*Media, error) {
 	rows, err := p.DB.Query(context.Background(), `
-		SELECT m.id, m.file_name, m.thumbnail_url, m.full_url
+		SELECT m.id, m.file_name, m.thumbnail_url, m.full_url, m.mime_type, m.embed_url
 		FROM project_media pm
 		JOIN media m ON pm.media_id = m.id
 		WHERE pm.project_id = $1
@@ -100,11 +101,20 @@ func (p *ProjectModel) GetMedia(projectID int) ([]*Media, error) {
 	defer rows.Close()
 
 	var media []*Media
+
 	for rows.Next() {
 		var m Media
-		if err := rows.Scan(&m.ID, &m.FileName, &m.ThumbnailURL, &m.FullURL); err != nil {
+		var embed pgtype.Text // ✅ Move inside the loop
+		var mime pgtype.Text
+
+		if err := rows.Scan(&m.ID, &m.FileName, &m.ThumbnailURL, &m.FullURL, &mime, &embed); err != nil {
 			return nil, err
 		}
+
+		if embed.Valid {
+			m.EmbedURL = &embed.String
+		}
+
 		media = append(media, &m)
 	}
 

@@ -1,0 +1,26 @@
+
+# Node/Frontend stuff
+node_modules
+package-lock.json
+package.json
+
+# IDE/config
+.vscode
+*.swp
+*.swo
+*.log
+
+# Go artifacts
+/server
+
+# Git repo
+.git
+.gitignore
+
+# Build tools
+Dockerfile
+Makefile
+docker-compose.yml
+
+# Secrets (optional — be careful!)
+.env

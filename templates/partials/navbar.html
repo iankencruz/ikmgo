@@ -56,6 +56,7 @@
               <ul role="list" class="space-y-1">
                 <li>
                   <a
+                    hx-boost="true"
                     href="/"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "home" }}
@@ -69,6 +70,7 @@
                 </li>
                 <li>
                   <a
+                    hx-boost="true"
                     href="/about"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "about" }}
@@ -82,6 +84,7 @@
                 </li>
                 <li>
                   <a
+                    hx-boost="true"
                     href="/galleries"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "galleries" }}
@@ -95,6 +98,7 @@
                 </li>
                 <li>
                   <a
+                    hx-boost="true"
                     href="/projects"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "projects" }}
@@ -109,6 +113,7 @@
 
                 <li>
                   <a
+                    hx-boost="true"
                     href="/contact"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "contact" }}
@@ -133,6 +138,7 @@
             >
               <a
                 href='{{index .Settings "instagram"}}'
+                hx-boost="true"
                 target="_blank"
                 class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
               >
@@ -151,6 +157,7 @@
               <a
                 href='{{index .Settings "threads"}}'
                 target="_blank"
+                hx-boost="true"
                 class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
               >
                 <svg
@@ -166,6 +173,7 @@
               <a
                 href='{{ index .Settings "youtube" }}'
                 target="_blank"
+                hx-boost="true"
                 class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
               >
                 <svg
@@ -209,6 +217,7 @@
           <ul role="list" class="space-y-1">
             <li>
               <a
+                hx-boost="true"
                 href="/"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                 {{ if eq .ActiveLink "home" }}
@@ -222,6 +231,7 @@
             </li>
             <li>
               <a
+                hx-boost="true"
                 href="/about"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "about" }}
@@ -236,6 +246,7 @@
 
             <li>
               <a
+                hx-boost="true"
                 href="/galleries"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "galleries" }}
@@ -249,6 +260,7 @@
             </li>
             <li>
               <a
+                hx-boost="true"
                 href="/projects"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "projects" }}
@@ -263,6 +275,7 @@
 
             <li>
               <a
+                hx-boost="true"
                 href="/contact"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "contact" }}

@@ -46,3 +46,17 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* Mobile Sidebar Start */
+
+/* Modal */
+//
+//function closeModal() {
+//  document.getElementById("modal").classList.add("hidden");
+//  document.getElementById("modal-content").innerHTML = "";
+//}
+//
+//document.body.addEventListener("htmx:afterRequest", function (evt) {
+//  const form = evt.target.closest("form");
+//  if (form?.getAttribute("hx-post") === "/admin/media/upload") {
+//    closeModal();
+//  }
+//});

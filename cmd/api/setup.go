@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -43,6 +44,7 @@ func CreateTablesIfNotExist(db *pgxpool.Pool) error {
 			description TEXT,
 			published BOOLEAN DEFAULT FALSE,
 			featured BOOLEAN DEFAULT FALSE,
+			cover_image_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
 			created_at TIMESTAMP DEFAULT NOW(),
 			updated_at TIMESTAMP DEFAULT NOW()
 		);`,
@@ -86,5 +88,37 @@ func CreateTablesIfNotExist(db *pgxpool.Pool) error {
 	}
 
 	log.Println("✅ All tables checked/created successfully.")
+	return nil
+}
+
+func EnsureAdminUserExists(app *Application) error {
+	const (
+		defaultFname = "Admin"
+		defaultLname = "User"
+	)
+
+	log.Println("🔍 Checking for existing users...")
+	users, err := app.UserModel.GetAll()
+	if err != nil {
+		return err
+	}
+
+	if len(users) == 0 {
+		log.Println("⚠️ No users found. Creating default admin user...")
+
+		err := app.UserModel.Create(defaultFname, defaultLname, os.Getenv("ADMIN_EMAIL"), os.Getenv("ADMIN_PASS"))
+		if err != nil {
+			log.Printf("❌ Failed to create default admin user: %v", err)
+			return err
+		}
+
+		log.Print(os.Getenv("ADMIN_EMAIL"))
+		log.Print("✅ Default admin user created")
+	} else {
+		log.Printf("✅ %d user(s) already exist. Skipping admin bootstrap.", len(users))
+		log.Print(os.Getenv("ADMIN_EMAIL"))
+		log.Print(os.Getenv("ADMIN_PASS"))
+	}
+
 	return nil
 }

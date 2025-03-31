@@ -172,3 +172,10 @@ func (p *ProjectModel) SetCoverImage(projectID, mediaID int) error {
 	)
 	return err
 }
+
+func (m *ProjectModel) UpdateBasicInfo(id int, title, description string) error {
+	_, err := m.DB.Exec(context.Background(), `
+		UPDATE projects SET title=$1, description=$2 WHERE id=$3
+	`, title, description, id)
+	return err
+}

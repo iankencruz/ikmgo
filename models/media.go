@@ -24,6 +24,7 @@ type MediaModel struct {
 
 // --- Insert methods ---
 func (m *MediaModel) InsertAndReturnID(fileName, fullURL, thumbURL string) (int, error) {
+
 	var id int
 	err := m.DB.QueryRow(context.Background(),
 		`INSERT INTO media (file_name, full_url, thumbnail_url)
@@ -52,36 +53,33 @@ func (m *MediaModel) InsertProjectMedia(fileName, url, thumbURL string, projectI
 }
 
 // --- Get methods ---
-func (m *MediaModel) GetAll() ([]map[string]interface{}, error) {
-	rows, err := m.DB.Query(context.Background(),
-		`SELECT m.id, m.file_name, m.thumbnail_url, m.full_url, m.mime_type, m.embed_url
-		 FROM media m
-		 ORDER BY m.id ASC`)
+func (m *MediaModel) GetAll() ([]*Media, error) {
+	rows, err := m.DB.Query(context.Background(), `
+		SELECT id, file_name, full_url, thumbnail_url, COALESCE(embed_url, '')
+		FROM media
+		ORDER BY id DESC
+	`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var media []map[string]interface{}
+	var media []*Media
 	for rows.Next() {
-		var id int
-		var fileName, thumbURL, fullURL, mimeType string
-		var embedURL *string
-
-		err := rows.Scan(&id, &fileName, &thumbURL, &fullURL, &mimeType, &embedURL)
+		m := &Media{}
+		err := rows.Scan(
+			&m.ID,
+			&m.FileName,
+			&m.FullURL,
+			&m.ThumbnailURL,
+			&m.EmbedURL, // Now safe: always a non-nil string
+		)
 		if err != nil {
 			return nil, err
 		}
-
-		media = append(media, map[string]interface{}{
-			"ID":           id,
-			"FileName":     fileName,
-			"ThumbnailURL": thumbURL,
-			"FullURL":      fullURL,
-			"MimeType":     mimeType,
-			"EmbedURL":     embedURL,
-		})
+		media = append(media, m)
 	}
+
 	return media, nil
 }
 
@@ -149,10 +147,9 @@ func (m *MediaModel) GetNextPosition(galleryID int) (int, error) {
 
 func (m *MediaModel) GetNextProjectPosition(projectID int) (int, error) {
 	var pos int
-	err := m.DB.QueryRow(context.Background(),
-		`SELECT COALESCE(MAX(position), -1) + 1
-		 FROM media
-		 WHERE project_id = $1`, projectID).Scan(&pos)
+	err := m.DB.QueryRow(context.Background(), `
+		SELECT COALESCE(MAX(position), 0) + 1 FROM project_media WHERE project_id=$1
+	`, projectID).Scan(&pos)
 	return pos, err
 }
 
@@ -260,5 +257,15 @@ func (m *MediaModel) MediaExists(mediaID, galleryID int) (bool, error) {
 
 func (m *MediaModel) Delete(id int) error {
 	_, err := m.DB.Exec(context.Background(), `DELETE FROM media WHERE id = $1`, id)
+	return err
+}
+
+func (m *MediaModel) AttachToProject(projectID, mediaID, position int) error {
+	_, err := m.DB.Exec(context.Background(), `
+		INSERT INTO project_media (project_id, media_id, position)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (project_id, media_id) DO UPDATE
+		SET position = EXCLUDED.position
+	`, projectID, mediaID, position)
 	return err
 }

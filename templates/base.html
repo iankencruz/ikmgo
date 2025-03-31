@@ -6,11 +6,6 @@
     <title>{{ index .Settings "site_title" }} | {{template "title" .}}</title>
     <!--HTMX-->
 
-    <script
-      src="https://unpkg.com/htmx.org@2.0.4"
-      integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
-      crossorigin="anonymous"
-    ></script>
     <!-- Tailwind CSS (replace with your own build if needed) -->
     <link rel="stylesheet" href="/static/css/tailwind.css" />
   </head>
@@ -27,6 +22,7 @@
     <script src="/static/js/main.js"></script>
     <!-- JavaScript for  Gallery Lightbox -->
     <script src="/static/js/gallery.js" defer></script>
+    <script src="/static/js/htmx.min.js" defer></script>
   </body>
 </html>
 {{ end }}

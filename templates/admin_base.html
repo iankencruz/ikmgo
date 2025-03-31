@@ -7,7 +7,6 @@
     <!--Sortable-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <!--HTMX-->
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     <!-- Tailwind CSS (replace with your own build if needed) -->
     <link rel="stylesheet" href="/static/css/tailwind.css" />
     <!-- JavaScript for open/close sidebar -->
@@ -23,6 +22,30 @@
         {{ template "content" . }}
       </div>
     </main>
+    <!-- MODAL -->
+
+    <!-- Modal wrapper -->
+    <div id="modal" class="fixed inset-0 z-50 bg-black/50 hidden">
+      <div
+        id="modal-content"
+        class="bg-white max-w-3xl mx-auto mt-24 p-6 rounded shadow"
+      ></div>
+    </div>
+    <script>
+      function closeModal() {
+        document.getElementById("modal").classList.add("hidden");
+        document.getElementById("modal-content").innerHTML = "";
+      }
+
+      document.body.addEventListener("htmx:afterRequest", function (evt) {
+        const form = evt.target.closest("form");
+        if (form?.getAttribute("hx-post") === "/admin/media/upload") {
+          closeModal();
+        }
+      });
+    </script>
+
+    <script src="/static/js/htmx.min.js" defer></script>
   </body>
 </html>
 {{ end }}

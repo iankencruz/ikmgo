@@ -154,10 +154,10 @@ func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 
 func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
-		`SELECT g.id, g.title, g.cover_image_id, g.published, m.full_url AS cover_image_url,
+		`SELECT g.id, g.title, g.published, m.full_url AS cover_image_url,
                 (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
          FROM galleries g
-         LEFT JOIN media m ON g.cover_image_id = m.id
+         LEFT JOIN media m ON g.id = m.id
          ORDER BY g.id ASC`)
 	if err != nil {
 		return nil, err
@@ -168,12 +168,11 @@ func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 	for rows.Next() {
 		var id int
 		var title string
-		var coverImageID *int
+		var published bool
 		var coverImageURL *string
 		var mediaCount int
-		var published bool // ✅ Store as a boolean
 
-		err := rows.Scan(&id, &title, &coverImageID, &published, &coverImageURL, &mediaCount)
+		err := rows.Scan(&id, &title, &published, &coverImageURL, &mediaCount)
 		if err != nil {
 			return nil, err
 		}
@@ -182,7 +181,6 @@ func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 		gallery := map[string]interface{}{
 			"ID":            id,
 			"Title":         title,
-			"CoverImageID":  coverImageID,
 			"CoverImageURL": coverImageURL,
 			"MediaCount":    mediaCount, // ✅ Media count included
 			"Published":     published,  // ✅ Include Published field
@@ -204,19 +202,21 @@ func (g *GalleryModel) SetCoverImage(galleryID, mediaID int) error {
 func (g *GalleryModel) GetByID(id int) (*Gallery, error) {
 	var gallery Gallery
 	err := g.DB.QueryRow(context.Background(), `
-		SELECT g.id, g.title, g.cover_image_id, m.thumbnail_url
+		SELECT g.id, g.title, g.published, m.full_url AS cover_image_url,
+			   (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
 		FROM galleries g
 		LEFT JOIN media m ON g.cover_image_id = m.id
-		WHERE g.id = $1`, id).
-		Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageID, &gallery.CoverImageURL)
+		ORDER BY g.id ASC
+		`, id).
+		Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageURL)
 
 	if err != nil {
 		log.Printf("⚠️ Scan fallback due to broken cover_image_id: %v", err)
 
 		// fallback query without the join
 		err = g.DB.QueryRow(context.Background(),
-			`SELECT id, title, cover_image_id FROM galleries WHERE id = $1`, id).
-			Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageID)
+			`SELECT id, title FROM galleries WHERE id = $1`, id).
+			Scan(&gallery.ID, &gallery.Title)
 
 		// set to nil manually
 		gallery.CoverImageURL = nil

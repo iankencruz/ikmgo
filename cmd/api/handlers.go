@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"ikm/models"
 	"ikm/utils"
@@ -18,15 +19,19 @@ import (
 
 	"github.com/disintegration/imaging"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/minio/minio-go/v7"
 )
 
 // Home Page Handler
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
+
 	gallery, media, err := app.GalleryModel.GetByTitle("Japan")
-	if err != nil {
+
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("❌ Error fetching featured gallery: %v", err)
 	}
+
 	app.render(w, r, "index.html", map[string]interface{}{
 		"Title":      "Home",
 		"Gallery":    gallery,
@@ -130,23 +135,76 @@ func (app *Application) AdminSettings(w http.ResponseWriter, r *http.Request) {
 // Update settings (POST)
 
 func (app *Application) UpdateSettings(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
-	for key, values := range r.PostForm {
+	// Save all key/value settings
+
+	for key, values := range r.MultipartForm.Value {
+		if key == "about_me_image" {
+			continue // ✅ skip this one — it’s handled separately
+		}
 		if len(values) == 0 {
 			continue
 		}
 		value := values[0]
-
 		if err := app.SettingsModel.Set(key, value); err != nil {
 			http.Error(w, "Failed to update setting: "+key, http.StatusInternalServerError)
 			return
 		}
 	}
 
+	// Handle optional About Me image upload
+	file, handler, err := r.FormFile("about_me_image")
+	if err == nil {
+		defer file.Close()
+
+		// Decode image
+		img, err := imaging.Decode(file, imaging.AutoOrientation(true))
+		if err != nil {
+			log.Printf("❌ Failed to decode image: %v", err)
+			http.Error(w, "Invalid image format", http.StatusBadRequest)
+			return
+		}
+
+		// Resize to max 1500x900 (preserving aspect ratio)
+		resized := imaging.Fit(img, 1000, 900, imaging.Lanczos)
+
+		// Encode to buffer
+		var buf bytes.Buffer
+		if err := imaging.Encode(&buf, resized, imaging.JPEG); err != nil {
+			log.Printf("❌ Failed to encode resized image: %v", err)
+			http.Error(w, "Failed to encode image", http.StatusInternalServerError)
+			return
+		}
+
+		// Generate S3 object name
+
+		objectName := fmt.Sprintf("settings/about_me_image_%d_%s", time.Now().UnixNano(), handler.Filename)
+
+		// Upload to S3
+		_, err = app.S3Client.PutObject(r.Context(), app.S3Bucket, objectName, &buf, int64(buf.Len()), minio.PutObjectOptions{
+			ContentType: "image/jpeg",
+			UserMetadata: map[string]string{
+				"x-amz-acl": "public-read",
+			},
+		})
+		if err != nil {
+			log.Printf("❌ Failed to upload image to S3: %v", err)
+			http.Error(w, "S3 upload failed", http.StatusInternalServerError)
+			return
+		}
+
+		// Save public URL to settings
+		imageURL := fmt.Sprintf("https://%s/%s/%s", os.Getenv("VULTR_S3_ENDPOINT"), app.S3Bucket, objectName)
+		if err := app.SettingsModel.Set("about_me_image", imageURL); err != nil {
+			log.Printf("❌ Failed to save setting: %v", err)
+			http.Error(w, "Error saving setting", http.StatusInternalServerError)
+			return
+		}
+	}
 	http.Redirect(w, r, "/admin/settings", http.StatusSeeOther)
 }
 
@@ -561,17 +619,6 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	galleryID, err := strconv.Atoi(r.FormValue("gallery_id"))
-	if err != nil {
-		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
-		return
-	}
-
-	displayMode := r.FormValue("display_mode")
-	if displayMode == "" {
-		displayMode = "grid"
-	}
-
 	files := r.MultipartForm.File["files"]
 	if len(files) == 0 {
 		http.Error(w, "No files uploaded", http.StatusBadRequest)
@@ -581,6 +628,27 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	var outputBuffer bytes.Buffer
 	ctx := context.Background()
 
+	projectID, _ := strconv.Atoi(r.FormValue("project_id"))
+	galleryID, _ := strconv.Atoi(r.FormValue("gallery_id"))
+
+	isProject := projectID > 0
+	isGallery := galleryID > 0
+
+	var position int
+	var errPos error
+
+	if isProject {
+		position, errPos = app.MediaModel.GetNextProjectPosition(projectID)
+	} else if isGallery {
+		position, errPos = app.GalleryModel.GetNextPosition(galleryID)
+	}
+
+	if errPos != nil && (isProject || isGallery) {
+		log.Printf("❌ Error getting next position: %v", errPos)
+		http.Error(w, "Error getting next position", http.StatusInternalServerError)
+		return
+	}
+
 	for _, fileHeader := range files {
 		file, err := fileHeader.Open()
 		if err != nil {
@@ -589,10 +657,12 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		base := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), galleryID, fileHeader.Filename)
+		base := fmt.Sprintf("%d_%s", time.Now().UnixNano(), fileHeader.Filename)
 		fileName := base
 		thumbName := "thumb_" + base
-		mediumName := "medium_" + base
+
+		fileKey := "Uploads/" + fileName
+		thumbKey := "Uploads/" + thumbName
 
 		img, err := imaging.Decode(file, imaging.AutoOrientation(true))
 		if err != nil {
@@ -601,16 +671,12 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		}
 
 		thumbnailImg := imaging.Resize(img, 500, 0, imaging.Lanczos)
-		mediumImg := imaging.Resize(img, 1024, 0, imaging.Lanczos)
 		file.Seek(0, 0)
-
-		fileKey := "Uploads/" + fileName
-		thumbKey := "Uploads/" + thumbName
-		mediumKey := "Uploads/" + mediumName
 
 		fileSize := fileHeader.Size
 		contentType := fileHeader.Header.Get("Content-Type")
 
+		// Upload original
 		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, fileKey, io.LimitReader(file, fileSize), fileSize, minio.PutObjectOptions{
 			ContentType:  contentType,
 			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
@@ -620,15 +686,8 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		var mediumBuf, thumbBuf bytes.Buffer
-
-		if err := imaging.Encode(&mediumBuf, mediumImg, imaging.JPEG); err == nil {
-			app.S3Client.PutObject(ctx, app.S3Bucket, mediumKey, bytes.NewReader(mediumBuf.Bytes()), int64(mediumBuf.Len()), minio.PutObjectOptions{
-				ContentType:  "image/jpeg",
-				UserMetadata: map[string]string{"x-amz-acl": "public-read"},
-			})
-		}
-
+		// Upload thumbnail
+		var thumbBuf bytes.Buffer
 		if err := imaging.Encode(&thumbBuf, thumbnailImg, imaging.JPEG); err == nil {
 			app.S3Client.PutObject(ctx, app.S3Bucket, thumbKey, bytes.NewReader(thumbBuf.Bytes()), int64(thumbBuf.Len()), minio.PutObjectOptions{
 				ContentType:  "image/jpeg",
@@ -636,39 +695,43 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
+		// Create URLs
 		fullURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
 		thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + thumbKey
 
-		// Insert media (no galleryID)
+		// Insert into media table
 		mediaID, err := app.MediaModel.InsertAndReturnID(fileName, fullURL, thumbURL)
 		if err != nil {
 			log.Printf("❌ DB insert failed: %v", err)
 			continue
 		}
 
-		// Get next position from join table
-		position, err := app.GalleryModel.GetNextPosition(galleryID)
-		if err != nil {
-			log.Printf("❌ Failed to get next position: %v", err)
-			continue
+		// Attach to project or gallery if needed
+		if isProject {
+
+			err = app.MediaModel.AttachToProject(projectID, mediaID, position)
+			if err != nil {
+				log.Printf("❌ Failed to attach to project: %v", err)
+				continue
+			}
+			position++
+		} else if isGallery {
+			err = app.GalleryModel.AttachMedia(galleryID, mediaID, position)
+			if err != nil {
+				log.Printf("❌ Failed to attach to gallery: %v", err)
+				continue
+			}
+			position++
 		}
 
-		// Attach media to gallery
-		err = app.GalleryModel.AttachMedia(galleryID, mediaID, position)
-		if err != nil {
-			log.Printf("❌ Failed to attach media: %v", err)
-			continue
-		}
-
+		// Render media item partial
 		media := &models.Media{
 			ID:           mediaID,
 			FileName:     fileName,
 			ThumbnailURL: thumbURL,
 			FullURL:      fullURL,
 		}
-
 		app.renderPartialHTMX(&outputBuffer, "partials/media_item.html", media)
-
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -677,110 +740,110 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 
 // Upload Project Media (POST)
 
-func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		http.Error(w, "Error parsing form", http.StatusBadRequest)
-		return
-	}
-
-	projectID, err := strconv.Atoi(r.FormValue("project_id"))
-	if err != nil {
-		http.Error(w, "Invalid project ID", http.StatusBadRequest)
-		return
-	}
-
-	files := r.MultipartForm.File["files"]
-	if len(files) == 0 {
-		http.Error(w, "No files uploaded", http.StatusBadRequest)
-		return
-	}
-
-	var outputBuffer bytes.Buffer
-	ctx := context.Background()
-
-	for _, fileHeader := range files {
-		file, err := fileHeader.Open()
-		if err != nil {
-			log.Printf("❌ Error opening file: %v", err)
-			continue
-		}
-		defer file.Close()
-
-		base := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), projectID, fileHeader.Filename)
-		fileName := base
-		thumbName := "thumb_" + base
-		mediumName := "medium_" + base
-
-		img, err := imaging.Decode(file, imaging.AutoOrientation(true))
-		if err != nil {
-			log.Printf("❌ Error decoding image: %v", err)
-			continue
-		}
-
-		thumbnailImg := imaging.Resize(img, 500, 0, imaging.Lanczos)
-		mediumImg := imaging.Resize(img, 1024, 0, imaging.Lanczos)
-		file.Seek(0, 0)
-
-		fileKey := "Uploads/" + fileName
-		thumbKey := "Uploads/" + thumbName
-		mediumKey := "Uploads/" + mediumName
-
-		fileSize := fileHeader.Size
-		contentType := fileHeader.Header.Get("Content-Type")
-
-		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, fileKey, io.LimitReader(file, fileSize), fileSize, minio.PutObjectOptions{
-			ContentType:  contentType,
-			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
-		})
-		if err != nil {
-			log.Printf("❌ Error uploading original: %v", err)
-			continue
-		}
-
-		var mediumBuf, thumbBuf bytes.Buffer
-
-		if err := imaging.Encode(&mediumBuf, mediumImg, imaging.JPEG); err == nil {
-			app.S3Client.PutObject(ctx, app.S3Bucket, mediumKey, bytes.NewReader(mediumBuf.Bytes()), int64(mediumBuf.Len()), minio.PutObjectOptions{
-				ContentType:  "image/jpeg",
-				UserMetadata: map[string]string{"x-amz-acl": "public-read"},
-			})
-		}
-
-		if err := imaging.Encode(&thumbBuf, thumbnailImg, imaging.JPEG); err == nil {
-			app.S3Client.PutObject(ctx, app.S3Bucket, thumbKey, bytes.NewReader(thumbBuf.Bytes()), int64(thumbBuf.Len()), minio.PutObjectOptions{
-				ContentType:  "image/jpeg",
-				UserMetadata: map[string]string{"x-amz-acl": "public-read"},
-			})
-		}
-
-		fullURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
-		thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + thumbKey
-
-		position, err := app.MediaModel.GetNextProjectPosition(projectID)
-		if err != nil {
-			log.Printf("❌ Failed to get project position: %v", err)
-			continue
-		}
-
-		mediaID, err := app.MediaModel.InsertProjectMedia(fileName, fullURL, thumbURL, projectID, position)
-		if err != nil {
-			log.Printf("❌ DB Project insert failed: %v", err)
-			continue
-		}
-
-		media := &models.Media{
-			ID:           mediaID,
-			FileName:     fileName,
-			FullURL:      fullURL,
-			ThumbnailURL: thumbURL,
-		}
-
-		app.renderPartialHTMX(&outputBuffer, "partials/media_item.html", media)
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	w.Write(outputBuffer.Bytes())
-}
+// func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Request) {
+// 	if err := r.ParseMultipartForm(50 << 20); err != nil {
+// 		http.Error(w, "Error parsing form", http.StatusBadRequest)
+// 		return
+// 	}
+//
+// 	projectID, err := strconv.Atoi(r.FormValue("project_id"))
+// 	if err != nil {
+// 		http.Error(w, "Invalid project ID", http.StatusBadRequest)
+// 		return
+// 	}
+//
+// 	files := r.MultipartForm.File["files"]
+// 	if len(files) == 0 {
+// 		http.Error(w, "No files uploaded", http.StatusBadRequest)
+// 		return
+// 	}
+//
+// 	var outputBuffer bytes.Buffer
+// 	ctx := context.Background()
+//
+// 	for _, fileHeader := range files {
+// 		file, err := fileHeader.Open()
+// 		if err != nil {
+// 			log.Printf("❌ Error opening file: %v", err)
+// 			continue
+// 		}
+// 		defer file.Close()
+//
+// 		base := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), projectID, fileHeader.Filename)
+// 		fileName := base
+// 		thumbName := "thumb_" + base
+// 		mediumName := "medium_" + base
+//
+// 		img, err := imaging.Decode(file, imaging.AutoOrientation(true))
+// 		if err != nil {
+// 			log.Printf("❌ Error decoding image: %v", err)
+// 			continue
+// 		}
+//
+// 		thumbnailImg := imaging.Resize(img, 500, 0, imaging.Lanczos)
+// 		mediumImg := imaging.Resize(img, 1024, 0, imaging.Lanczos)
+// 		file.Seek(0, 0)
+//
+// 		fileKey := "Uploads/" + fileName
+// 		thumbKey := "Uploads/" + thumbName
+// 		mediumKey := "Uploads/" + mediumName
+//
+// 		fileSize := fileHeader.Size
+// 		contentType := fileHeader.Header.Get("Content-Type")
+//
+// 		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, fileKey, io.LimitReader(file, fileSize), fileSize, minio.PutObjectOptions{
+// 			ContentType:  contentType,
+// 			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
+// 		})
+// 		if err != nil {
+// 			log.Printf("❌ Error uploading original: %v", err)
+// 			continue
+// 		}
+//
+// 		var mediumBuf, thumbBuf bytes.Buffer
+//
+// 		if err := imaging.Encode(&mediumBuf, mediumImg, imaging.JPEG); err == nil {
+// 			app.S3Client.PutObject(ctx, app.S3Bucket, mediumKey, bytes.NewReader(mediumBuf.Bytes()), int64(mediumBuf.Len()), minio.PutObjectOptions{
+// 				ContentType:  "image/jpeg",
+// 				UserMetadata: map[string]string{"x-amz-acl": "public-read"},
+// 			})
+// 		}
+//
+// 		if err := imaging.Encode(&thumbBuf, thumbnailImg, imaging.JPEG); err == nil {
+// 			app.S3Client.PutObject(ctx, app.S3Bucket, thumbKey, bytes.NewReader(thumbBuf.Bytes()), int64(thumbBuf.Len()), minio.PutObjectOptions{
+// 				ContentType:  "image/jpeg",
+// 				UserMetadata: map[string]string{"x-amz-acl": "public-read"},
+// 			})
+// 		}
+//
+// 		fullURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
+// 		thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + thumbKey
+//
+// 		position, err := app.MediaModel.GetNextProjectPosition(projectID)
+// 		if err != nil {
+// 			log.Printf("❌ Failed to get project position: %v", err)
+// 			continue
+// 		}
+//
+// 		mediaID, err := app.MediaModel.InsertProjectMedia(fileName, fullURL, thumbURL, projectID, position)
+// 		if err != nil {
+// 			log.Printf("❌ DB Project insert failed: %v", err)
+// 			continue
+// 		}
+//
+// 		media := &models.Media{
+// 			ID:           mediaID,
+// 			FileName:     fileName,
+// 			FullURL:      fullURL,
+// 			ThumbnailURL: thumbURL,
+// 		}
+//
+// 		app.renderPartialHTMX(&outputBuffer, "partials/media_item.html", media)
+// 	}
+//
+// 	w.Header().Set("Content-Type", "text/html")
+// 	w.Write(outputBuffer.Bytes())
+// }
 
 // Delete Media File (DELETE)
 
@@ -886,6 +949,8 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 // Get All Galleries
 func (app *Application) Galleries(w http.ResponseWriter, r *http.Request) {
 	galleries, err := app.GalleryModel.GetAllPublic()
+	log.Printf("Galleries: %v", galleries)
+
 	if err != nil {
 		http.Error(w, "Error fetching galleries", http.StatusInternalServerError)
 		return
@@ -1134,4 +1199,100 @@ func verifyRecaptcha(token, secret string) bool {
 	}
 
 	return true
+}
+
+func (app *Application) GetAboutMeImageModal(w http.ResponseWriter, r *http.Request) {
+	media, err := app.MediaModel.GetAll()
+	if err != nil {
+		http.Error(w, "Error loading media", http.StatusInternalServerError)
+		return
+	}
+
+	app.renderPartialHTMX(w, "partials/about_me_image_modal.html", map[string]interface{}{
+		"Media": media,
+	})
+}
+
+func (app *Application) SetAboutMeImage(w http.ResponseWriter, r *http.Request) {
+	idStr := r.FormValue("media_id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		return
+	}
+
+	media, err := app.MediaModel.GetByID(id)
+	if err != nil {
+		http.Error(w, "Image not found", http.StatusNotFound)
+		return
+	}
+
+	err = app.SettingsModel.Set("about_me_image", media.ThumbnailURL)
+	if err != nil {
+		http.Error(w, "Failed to save setting", http.StatusInternalServerError)
+		return
+	}
+
+	// Return updated image block
+	app.render(w, r, "partials/about_image_preview.html", map[string]interface{}{
+		"ImageURL": media.ThumbnailURL,
+	})
+}
+
+func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{}
+
+	if pid := r.URL.Query().Get("project_id"); pid != "" {
+		if projectID, err := strconv.Atoi(pid); err == nil {
+			data["ProjectID"] = projectID
+		}
+	}
+	if gid := r.URL.Query().Get("gallery_id"); gid != "" {
+		if galleryID, err := strconv.Atoi(gid); err == nil {
+			data["GalleryID"] = galleryID
+		}
+	}
+
+	app.renderPartialHTMX(w, "partials/upload_media_modal.html", data)
+}
+
+func (app *Application) ProjectInfoView(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	project, err := app.ProjectModel.GetByID(id)
+	if err != nil {
+		http.Error(w, "Project not found", http.StatusNotFound)
+		return
+	}
+	app.renderPartialHTMX(w, "partials/project_info_view.html", project)
+}
+
+func (app *Application) ProjectInfoEdit(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	project, err := app.ProjectModel.GetByID(id)
+	if err != nil {
+		http.Error(w, "Project not found", http.StatusNotFound)
+		return
+	}
+	app.renderPartialHTMX(w, "partials/project_info_form.html", project)
+}
+
+func (app *Application) ProjectInfoUpdate(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+
+	err := app.ProjectModel.UpdateBasicInfo(id, title, description)
+	if err != nil {
+		http.Error(w, "Update failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Return updated view
+	project, _ := app.ProjectModel.GetByID(id)
+	app.renderPartialHTMX(w, "partials/project_info_view.html", project)
 }

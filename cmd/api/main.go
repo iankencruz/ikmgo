@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -29,6 +30,12 @@ type Application struct {
 }
 
 func main() {
+
+	// Load environment variables from the .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
 
 	// Load environment variables
 	port := os.Getenv("PORT")
@@ -110,6 +117,11 @@ func main() {
 
 	if err := CreateTablesIfNotExist(app.DB); err != nil {
 		log.Fatal(err)
+	}
+
+	// Ensure at least one admin user exists
+	if err := EnsureAdminUserExists(app); err != nil {
+		log.Fatalf("❌ Error bootstrapping admin user: %v", err)
 	}
 
 	// DebugRoutes(app.routes())

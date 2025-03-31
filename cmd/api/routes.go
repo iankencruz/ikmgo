@@ -68,8 +68,10 @@ func (app *Application) routes() http.Handler {
 		r.Post("/project/edit/{id}", app.UpdateProject)         // handle update
 		r.Post("/project/{id}/cover", app.SetProjectCoverImage) // HTMX: update cover
 		r.Post("/project/update-order", app.UpdateProjectMediaOrder)
-		r.Post("/project/media/upload", app.UploadProjectMedia)
 		r.Post("/project/{id}/publish", app.SetProjectVisibility)
+		r.Get("/project/{id}/info", app.ProjectInfoView)
+		r.Get("/project/{id}/info/edit", app.ProjectInfoEdit)
+		r.Post("/project/{id}/info", app.ProjectInfoUpdate)
 
 		//Users
 		r.Get("/users", app.AdminUsers)
@@ -79,6 +81,7 @@ func (app *Application) routes() http.Handler {
 
 		// Media management
 		r.Get("/media", app.AdminMedia)
+		r.Get("/media/upload-modal", app.UploadMediaModal)
 		r.Get("/media/upload", app.UploadMediaForm)
 		r.Post("/media/upload", app.UploadMedia)
 		r.Delete("/media/{id}", app.DeleteMedia)
@@ -91,6 +94,8 @@ func (app *Application) routes() http.Handler {
 		// Settings
 		r.Get("/settings", app.AdminSettings)
 		r.Post("/settings", app.UpdateSettings)
+		r.Get("/settings/select-about-image", app.GetAboutMeImageModal)
+		r.Post("/settings/set-about-image", app.SetAboutMeImage)
 
 	})
 

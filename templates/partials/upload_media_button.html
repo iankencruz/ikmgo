@@ -1,0 +1,14 @@
+
+
+{{ define "partials/upload_media_button.html" }}
+<button
+  hx-get="{{ .ModalURL }}"
+  hx-target="{{ or .TargetID "#modal-content" }}"
+  hx-swap="innerHTML"
+  onclick="document.getElementById('modal').classList.remove('hidden')"
+  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+>
+  {{ if .Label }}{{ .Label }}{{ else }}Upload Media{{ end }}
+</button>
+{{ end }}
+

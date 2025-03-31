@@ -1,59 +1,142 @@
+
 {{ define "content" }}
-<h1 class="text-2xl font-bold mb-4">Website Settings</h1>
+<h1 class="text-2xl font-bold mb-6">Website Settings</h1>
 
-<form method="POST" action="/admin/settings" class="space-y-4">
-  <div>
-    <label class="block font-semibold">Website Title</label>
-    <input
-      type="text"
-      name="site_title"
-      value='{{ index .Settings "site_title" }}'
-      class="w-full p-2 border border-gray-300 rounded"
-    />
-  </div>
-  <div>
-    <label class="block font-semibold">About Description</label>
-    <textarea
-      rows="8"
-      name="about_description"
-      class="w-full p-2 border border-gray-300 rounded"
-    >
-    {{ index .Settings "about_description" }}
-    </textarea>
+<!-- Tabs (Mobile Dropdown + Desktop Links) -->
+<div>
+  <!-- Mobile -->
+  <div class="grid grid-cols-1 sm:hidden mb-4">
+    <select onchange="switchToTab(this.value)"
+      class="w-full appearance-none rounded-md bg-white py-2 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600">
+      <option value="info">Info</option>
+      <option value="socials">Socials</option>
+    </select>
   </div>
 
-  <div>
-    <label class="block font-semibold">Threads URL</label>
-    <input
-      type="text"
-      name="threads"
-      value='{{ index .Settings "threads" }}'
-      class="w-full p-2 border border-gray-300 rounded"
-    />
+  <!-- Desktop -->
+  <div class="hidden sm:block">
+    <div class="border-b border-gray-200 mb-4">
+      <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        <a href="#" onclick="switchToTab('info', event)"
+          class="tab-link border-b-2 border-indigo-500 text-indigo-600 px-1 py-4 text-sm font-medium whitespace-nowrap">
+          Info
+        </a>
+        <a href="#" onclick="switchToTab('socials', event)"
+          class="tab-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 px-1 py-4 text-sm font-medium whitespace-nowrap">
+          Socials
+        </a>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<form method="POST" action="/admin/settings" enctype="multipart/form-data" class="space-y-4">
+
+  <!-- Info Tab -->
+  <div id="info" class="tab-pane block space-y-4">
+    <div>
+      <label class="block font-semibold">Website Title</label>
+      <input
+        type="text"
+        name="site_title"
+        value='{{ index .Settings "site_title" }}'
+        class="w-full p-2 border border-gray-300 rounded"
+      />
+    </div>
+
+    <div>
+      <label class="block font-semibold mb-1">About Me Image</label>
+      <div class="flex items-center gap-4">
+        {{ if index .Settings "about_me_image" }}
+          <img src="{{ index .Settings "about_me_image" }}" class="w-32 h-32 rounded object-cover border border-gray-300" />
+        {{ else }}
+          <div class="w-32 h-32 flex items-center justify-center bg-gray-100 border border-gray-300 text-gray-500 text-sm">
+            No image
+          </div>
+        {{ end }}
+        <button
+          class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          hx-get="/admin/settings/select-about-image"
+          hx-target="#modal-content"
+          hx-swap="innerHTML"
+          onclick="document.getElementById('modal').classList.remove('hidden')"
+        >
+          Change Image
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="block font-semibold">About Description</label>
+      <textarea
+        rows="8"
+        name="about_description"
+        class="w-full p-2 border border-gray-300 rounded"
+      >{{ index .Settings "about_description" }}</textarea>
+    </div>
   </div>
 
-  <div>
-    <label class="block font-semibold">Instagram URL</label>
-    <input
-      type="text"
-      name="instagram"
-      value='{{ index .Settings "instagram" }}'
-      class="w-full p-2 border border-gray-300 rounded"
-    />
-  </div>
+  <!-- Socials Tab -->
+  <div id="socials" class="tab-pane hidden space-y-4">
+    <div>
+      <label class="block font-semibold">Threads URL</label>
+      <input
+        type="text"
+        name="threads"
+        value='{{ index .Settings "threads" }}'
+        class="w-full p-2 border border-gray-300 rounded"
+      />
+    </div>
 
-  <div>
-    <label class="block font-semibold">Youtube URL</label>
-    <input
-      type="text"
-      name="youtube"
-      value='{{ index .Settings "youtube" }}'
-      class="w-full p-2 border border-gray-300 rounded"
-    />
+    <div>
+      <label class="block font-semibold">Instagram URL</label>
+      <input
+        type="text"
+        name="instagram"
+        value='{{ index .Settings "instagram" }}'
+        class="w-full p-2 border border-gray-300 rounded"
+      />
+    </div>
+
+    <div>
+      <label class="block font-semibold">Youtube URL</label>
+      <input
+        type="text"
+        name="youtube"
+        value='{{ index .Settings "youtube" }}'
+        class="w-full p-2 border border-gray-300 rounded"
+      />
+    </div>
   </div>
 
   <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
     Save Settings
   </button>
 </form>
+
+<script>
+  function switchToTab(id, e = null) {
+    if (e) e.preventDefault();
+
+    document.querySelectorAll(".tab-pane").forEach(pane =>
+      pane.classList.add("hidden")
+    );
+    document.getElementById(id)?.classList.remove("hidden");
+
+    document.querySelectorAll(".tab-link").forEach(link => {
+      link.classList.remove("border-indigo-500", "text-indigo-600");
+      link.classList.add("border-transparent", "text-gray-500");
+    });
+
+    document.querySelectorAll(".tab-link").forEach(link => {
+      if (link.textContent.trim().toLowerCase() === id) {
+        link.classList.add("border-indigo-500", "text-indigo-600");
+        link.classList.remove("border-transparent", "text-gray-500");
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => switchToTab("info"));
+</script>
 {{ end }}
+

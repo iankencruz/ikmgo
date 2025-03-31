@@ -1,102 +1,102 @@
 {{ define "content" }}
 <h1 class="text-2xl font-bold mb-6">Edit Project: {{ .Project.Title }}</h1>
 
-<!-- Form: Title + Description -->
-<form
-  hx-post="/admin/project/edit/{{ .Project.ID }}"
-  class="space-y-6 bg-white border border-gray-200 rounded-lg p-6 mb-10"
->
-  <div>
-    <label for="title" class="block font-medium text-gray-700">Title</label>
-    <input
-      type="text"
-      name="title"
-      value="{{ .Project.Title }}"
-      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-    />
-  </div>
-
-  <div>
-    <label for="description" class="block font-medium text-gray-700"
-      >Description</label
-    >
-    <textarea
-      name="description"
-      rows="4"
-      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-    >
-{{ .Project.Description }}</textarea
-    >
-  </div>
-
-  <button
-    type="submit"
-    class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 shadow"
-  >
-    Save Changes
-  </button>
-</form>
-
-<!-- Cover Image Preview + Modal Trigger -->
-<div class="mb-10">
-  <div class="flex justify-between items-center mb-2">
-    <h2 class="text-xl font-semibold">Cover Image</h2>
-    <button
-      type="button"
-      onclick="document.getElementById('coverModal').classList.remove('hidden')"
-      class="text-sm text-indigo-600 hover:underline"
-    >
-      Change Cover
-    </button>
-  </div>
-
-  <div id="cover-preview">
-    {{ if .Project.CoverImageID }}
-    <img src="{{ .Project.CoverImageURL }}" class="w-full rounded shadow" />
-    {{ else }}
-    <div
-      class="w-full max-w-md h-40 flex items-center justify-center bg-gray-100 text-gray-500 border rounded border-dashed"
-    >
-      No cover image selected
-    </div>
-    {{ end }}
+<!-- Desktop Tabs -->
+<div class="hidden sm:block">
+  <div class="border-b border-gray-200">
+    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+      <a
+        href="#"
+        class="tab-link border-b-2 border-indigo-500 text-indigo-600 px-1 py-4 text-sm font-medium whitespace-nowrap"
+        onclick="switchToTab('info', event)"
+        >Project Info</a
+      >
+      <a
+        href="#"
+        class="tab-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 px-1 py-4 text-sm font-medium whitespace-nowrap"
+        onclick="switchToTab('cover', event)"
+        >Cover Image</a
+      >
+    </nav>
   </div>
 </div>
 
-<!-- Upload Media Form -->
-<h2 class="text-xl font-semibold mt-10 mb-4">Upload Media</h2>
-<form
-  hx-post="/admin/project/media/upload"
-  hx-target="#sortableGrid"
-  hx-swap="afterbegin"
-  enctype="multipart/form-data"
-  onsubmit="return false;"
->
-  <input type="file" name="files" multiple />
-  <input type="hidden" name="project_id" value="{{ .Project.ID }}" />
-  <input type="hidden" name="display_mode" id="display_mode" value="grid" />
-  <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded mt-2">
-    Upload
-  </button>
-</form>
+<div id="tab-content">
+  <!-- Info Tab -->
 
-<!-- Reorder Header + View Toggle -->
+  <!-- Info Tab (HTMX wrapper) -->
+  <div id="info" class="tab-pane block mt-6">
+    <div
+      id="project-info"
+      hx-get="/admin/project/{{ .Project.ID }}/info"
+      hx-trigger="load"
+    >
+      <!-- HTMX will load the static view here -->
+    </div>
+  </div>
+
+  <!-- Cover Image Tab -->
+  <div id="cover" class="tab-pane hidden mt-6">
+    <div class="mb-10 bg-white border border-gray-200 rounded-lg p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-800">Cover Image</h2>
+        <button
+          type="button"
+          onclick="document.getElementById('coverModal').classList.remove('hidden')"
+          class="text-sm text-indigo-600 hover:underline"
+        >
+          Change Cover
+        </button>
+      </div>
+
+      <div id="cover-preview">
+        {{ if .Project.CoverImageID }}
+        <img
+          src="{{ .Project.CoverImageURL }}"
+          class="w-full rounded shadow h-96 object-cover"
+        />
+        {{ else }}
+        <div
+          class="w-full max-w-md h-40 flex items-center justify-center bg-gray-100 text-gray-500 border rounded border-dashed"
+        >
+          No cover image selected
+        </div>
+        {{ end }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="relative mt-40 py-4">
+  <div class="absolute inset-0 flex items-center" aria-hidden="true">
+    <div class="w-full border-t border-gray-300"></div>
+  </div>
+</div>
+
+<!-- Upload Button -->
+<div class="flex flex-col lg:flex-row py-4 justify-between items-center">
+  <h2 class="text-xl font-semibold">Upload Media</h2>
+  <!-- prettier-ignore -->
+  {{ template "partials/upload_media_button.html" (dict
+  "ModalURL" (printf "/admin/media/upload-modal?project_id=%d" .Project.ID)
+  "Label" "Upload Project Media"
+  )}}
+</div>
+
+<!-- Media Grid -->
 <div class="flex justify-between items-center mt-8">
   <h2 class="text-xl font-semibold">Reorder Images</h2>
 </div>
 
-<!-- Sortable Grid -->
 <div
   id="sortableGrid"
   class="sortable grid grid-cols-3 gap-4 mt-4"
   data-project="{{ .Project.ID }}"
 >
   {{ range .Media }}
-
   <div
     class="sortable-item border border-gray-300 p-2 rounded shadow-lg"
     data-id="{{ .ID }}"
-    data-gallery="{{ .GalleryID }}"
   >
     <img src="{{ .ThumbnailURL }}" class="w-full h-40 object-cover rounded" />
     <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
@@ -154,9 +154,60 @@
   </div>
 </div>
 
-<!-- SortableJS Script -->
+<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
+  function showTab(event, id) {
+    event.preventDefault();
+    document
+      .querySelectorAll(".tab-pane")
+      .forEach((pane) => pane.classList.add("hidden"));
+    document
+      .querySelectorAll(".tab-link")
+      .forEach((link) =>
+        link.classList.remove("border-indigo-500", "text-gray-900"),
+      );
+    document.getElementById(id).classList.remove("hidden");
+    event.target.classList.add("border-indigo-500", "text-gray-900");
+  }
+
+  function switchToTab(tabName, event = null) {
+    if (event) event.preventDefault();
+
+    // Hide all panes
+    document
+      .querySelectorAll(".tab-pane")
+      .forEach((pane) => pane.classList.add("hidden"));
+
+    // Show selected pane
+    document.getElementById(tabName)?.classList.remove("hidden");
+
+    // Reset all tab links
+    document.querySelectorAll(".tab-link").forEach((link) => {
+      link.classList.remove("border-indigo-500", "text-indigo-600");
+      link.classList.add("border-transparent", "text-gray-500");
+    });
+
+    // Highlight active link
+    document.querySelectorAll(`.tab-link`).forEach((link) => {
+      if (link.textContent.trim() === getTabLabel(tabName)) {
+        link.classList.add("border-indigo-500", "text-indigo-600");
+        link.classList.remove("border-transparent", "text-gray-500");
+      }
+    });
+  }
+
+  function getTabLabel(tabValue) {
+    const map = {
+      info: "Project Info",
+      cover: "Cover Image",
+    };
+    return map[tabValue] || tabValue;
+  }
+
+  // Default to first tab on load
+  document.addEventListener("DOMContentLoaded", () => switchToTab("info"));
+
   document.addEventListener("DOMContentLoaded", function () {
     const sortableGrid = document.querySelector(".sortable");
 

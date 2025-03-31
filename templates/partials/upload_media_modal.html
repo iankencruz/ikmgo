@@ -1,0 +1,40 @@
+{{ define "partials/upload_media_modal.html" }}
+<div class="flex justify-between items-center mb-4">
+  <h2 class="text-xl font-semibold">Upload Media</h2>
+  <button
+    onclick="closeModal()"
+    class="text-gray-500 hover:text-gray-700 text-xl"
+  >
+    ✕
+  </button>
+</div>
+
+<form
+  enctype="multipart/form-data"
+  hx-post="/admin/media/upload"
+  hx-encoding="multipart/form-data"
+  hx-target="#sortableGrid"
+  hx-swap="beforeend"
+>
+  {{ if .ProjectID }}
+  <input type="hidden" name="project_id" value="{{ .ProjectID }}" />
+  {{ else if .GalleryID }}
+  <input type="hidden" name="gallery_id" value="{{ .GalleryID }}" />
+  {{ end }}
+
+  <input
+    type="file"
+    name="files"
+    multiple
+    required
+    class="w-full border border-gray-300 p-2 rounded mb-4"
+  />
+
+  <button
+    type="submit"
+    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+  >
+    Upload
+  </button>
+</form>
+{{ end }}

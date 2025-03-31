@@ -29,7 +29,7 @@
         <img
           src="{{ .Gallery.CoverImageURL }}"
           alt="Cover Image"
-          class="rounded-lg object-cover aspect-video w-full"
+          class="w-full rounded shadow h-96 object-cover"
         />
         {{ else }}
         <div
@@ -109,20 +109,11 @@
 <!-- Upload Media -->
 <h2 class="text-xl font-bold mt-6">Upload New Media</h2>
 
-<form
-  hx-post="/admin/media/upload"
-  hx-target="#sortableGrid"
-  hx-swap="afterbegin"
-  enctype="multipart/form-data"
-  onsubmit="return false;"
->
-  <input type="file" name="files" multiple />
-  <input type="hidden" name="gallery_id" value="{{ .Gallery.ID }}" />
-  <input type="hidden" name="display_mode" id="display_mode" value="grid" />
-  <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded mt-2">
-    Upload
-  </button>
-</form>
+<!-- prettier-ignore-->
+{{ template "partials/upload_media_button.html" (dict
+  "ModalURL" (printf "/admin/media/upload-modal?gallery_id=%d" .Gallery.ID)
+  "Label" "Upload Gallery Media"
+) }}
 
 <!-- ✅ View Toggle Buttons -->
 <div class="flex justify-between items-center mt-6">

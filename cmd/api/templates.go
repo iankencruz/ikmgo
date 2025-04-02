@@ -31,6 +31,29 @@ var funcMap = template.FuncMap{
 		}
 		return d, nil
 	},
+	"add": func(a, b int) int {
+		return a + b
+	},
+	"sub": func(a, b int) int {
+		return a - b
+	},
+	"seq": func(start, end int) []int {
+		arr := make([]int, end-start+1)
+		for i := range arr {
+			arr[i] = start + i
+		}
+		return arr
+	},
+	"min": func(a, b int) int {
+		if a < b {
+			return a
+		}
+		return b
+	},
+
+	"mul": func(a, b int) int {
+		return a * b
+	},
 }
 
 func LoadTemplates() error {

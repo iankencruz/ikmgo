@@ -13,6 +13,7 @@ type Project struct {
 	Description   string
 	CoverImageID  *int
 	CoverImageURL *string
+	MediaCount    int // ✅ Count of Media Items
 	Published     bool
 }
 
@@ -69,16 +70,24 @@ func (p *ProjectModel) SetPublished(id int, published bool) error {
 func (p *ProjectModel) GetByID(id int) (*Project, error) {
 	var project Project
 	err := p.DB.QueryRow(context.Background(), `
-		SELECT pr.id, pr.title, pr.description, pr.cover_image_id, m.thumbnail_url
+		SELECT
+		  pr.id,
+		  pr.title,
+		  pr.description,
+		  pr.cover_image_id,
+		  m.thumbnail_url,
+		  (SELECT COUNT(*) FROM project_media WHERE project_id = pr.id) as media_count
 		FROM projects pr
 		LEFT JOIN media m ON pr.cover_image_id = m.id
 		WHERE pr.id = $1
+
 	`, id).Scan(
 		&project.ID,
 		&project.Title,
 		&project.Description,
 		&project.CoverImageID,
 		&project.CoverImageURL,
+		&project.MediaCount,
 	)
 	if err != nil {
 		return nil, err
@@ -87,24 +96,25 @@ func (p *ProjectModel) GetByID(id int) (*Project, error) {
 }
 
 // GetMedia returns media linked to the project via the join table
-func (p *ProjectModel) GetMedia(projectID int) ([]*Media, error) {
+
+func (p *ProjectModel) GetMediaPaginated(projectID, limit, offset int) ([]*Media, error) {
 	rows, err := p.DB.Query(context.Background(), `
 		SELECT m.id, m.file_name, m.thumbnail_url, m.full_url, m.mime_type, m.embed_url
 		FROM project_media pm
 		JOIN media m ON pm.media_id = m.id
 		WHERE pm.project_id = $1
-		ORDER BY pm.media_id ASC
-	`, projectID)
+		ORDER BY pm.position ASC
+		LIMIT $2 OFFSET $3
+	`, projectID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var media []*Media
-
 	for rows.Next() {
 		var m Media
-		var embed pgtype.Text // ✅ Move inside the loop
+		var embed pgtype.Text
 		var mime pgtype.Text
 
 		if err := rows.Scan(&m.ID, &m.FileName, &m.ThumbnailURL, &m.FullURL, &mime, &embed); err != nil {
@@ -114,6 +124,7 @@ func (p *ProjectModel) GetMedia(projectID int) ([]*Media, error) {
 		if embed.Valid {
 			m.EmbedURL = &embed.String
 		}
+		m.MimeType = mime.String
 
 		media = append(media, &m)
 	}

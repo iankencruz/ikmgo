@@ -10,6 +10,7 @@ import (
 	"ikm/utils"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -260,7 +261,7 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	media, err := app.ProjectModel.GetMedia(projectID)
+	media, err := app.ProjectModel.GetMediaPaginated(projectID, 5, 0)
 	if err != nil {
 		log.Printf("❌ Failed to get media for project %d: %v", projectID, err)
 		http.Error(w, "Unable to load media", http.StatusInternalServerError)
@@ -310,7 +311,7 @@ func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		media, err := app.GalleryModel.GetMedia(galleryID)
+		media, err := app.GalleryModel.GetMediaPaginated(galleryID, 5, 0)
 		if err != nil {
 			log.Printf("❌ Error fetching media for gallery %d: %v", galleryID, err)
 			continue
@@ -334,26 +335,65 @@ func (app *Application) CreateGalleryForm(w http.ResponseWriter, r *http.Request
 }
 
 // Edit Gallery Page
+
 func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
+	pageStr := r.URL.Query().Get("page")
+	page := 0
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+			page = p
+		}
+	}
+	limit := 10
+	offset := page * limit
+
+	log.Printf("🧪 GalleryID: %d | Page: %d | Limit: %d | Offset: %d", id, page, limit, offset)
+
+	// Fetch gallery info
 	gallery, err := app.GalleryModel.GetByID(id)
 	if err != nil {
-		http.Error(w, "Gallery not found", http.StatusNotFound)
+		http.NotFound(w, r)
 		return
 	}
 
-	media, err := app.GalleryModel.GetMedia(id)
+	// Load limit+1 items to check if there’s more
+	media, err := app.GalleryModel.GetMediaPaginated(id, limit+1, offset)
 	if err != nil {
-		log.Printf("❌ Error fetching media for gallery %d: %v", id, err)
+		http.Error(w, "Failed to get media", http.StatusInternalServerError)
+		return
 	}
+
+	totalPages := int(math.Ceil(float64(gallery.MediaCount) / float64(limit)))
+
+	hasNext := false
+	if len(media) > limit {
+		hasNext = true
+		media = media[:limit] // trim the extra item
+	}
+
+	log.Printf("🧪 Page: %d | Offset: %d | Media: %d | HasNext: %v", page, offset, len(media), hasNext)
 
 	data := map[string]interface{}{
-		"Title":   "Edit Gallery",
-		"Gallery": gallery,
-		"Media":   media,
+		"Title":             "Edit Gallery",
+		"Media":             media,
+		"Item":              gallery,
+		"Page":              page,
+		"Limit":             limit,
+		"TotalPages":        totalPages,
+		"HasNext":           hasNext,
+		"PaginationBaseURL": fmt.Sprintf("/admin/gallery/%d", id), // or /projects, etc.
+		"PaginationTarget":  "#sortableGrid",
 	}
 
+	// If HTMX, render just the sortable media grid block
+	if utils.IsHTMX(r) {
+		app.renderPartialHTMX(w, "admin_media_grid", data)
+		return
+	}
+
+	// Full page render
 	app.render(w, r, "admin/edit_gallery.html", data)
 }
 
@@ -471,19 +511,54 @@ func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) 
 	project, err := app.ProjectModel.GetByID(id)
 	if err != nil {
 		log.Printf("❌ GetByID: Failed to find project %d: %v", id, err)
+		http.NotFound(w, r)
+		return
 	}
 
-	media, err := app.ProjectModel.GetMedia(id)
+	// 🔢 Pagination Params
+	pageStr := r.URL.Query().Get("page")
+	page := 0
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+			page = p
+		}
+	}
+	limit := 10
+	offset := page * limit
+
+	// 📦 Paginated Media
+	media, err := app.ProjectModel.GetMediaPaginated(id, limit, offset)
 	if err != nil {
 		log.Printf("❌ Error fetching media for project %d: %v", id, err)
 		http.Error(w, "Error loading media", http.StatusInternalServerError)
 		return
 	}
 
+	totalPages := int(math.Ceil(float64(project.MediaCount) / float64(limit)))
+
+	hasNext := false
+	if len(media) > limit {
+		hasNext = true
+		media = media[:limit] // trim the extra item
+	}
+
 	data := map[string]interface{}{
-		"Title":   "Edit Project",
-		"Project": project,
-		"Media":   media,
+		"Title":             "Edit Project",
+		"Media":             media,
+		"Project":           project,
+		"Item":              project,
+		"Page":              page,
+		"Limit":             limit,
+		"TotalPages":        totalPages,
+		"HasNext":           hasNext,
+		"PaginationBaseURL": fmt.Sprintf("/admin/project/edit/%d", id),
+		"PaginationTarget":  "#sortableGrid",
+	}
+
+	// 🧠 HTMX: If HTMX, only re-render sortableGrid block
+	if utils.IsHTMX(r) {
+		app.renderPartialHTMX(w, "admin_media_grid", data)
+		return
 	}
 
 	app.render(w, r, "admin/edit_project.html", data)
@@ -996,7 +1071,7 @@ func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch media
-	media, err := app.GalleryModel.GetMedia(galleryID)
+	media, err := app.GalleryModel.GetMediaPaginated(galleryID, 5, 0)
 	if err != nil {
 		log.Printf("❌ Error fetching media: %v", err)
 		http.Error(w, "Error retrieving media", http.StatusInternalServerError)
@@ -1293,7 +1368,12 @@ func (app *Application) ProjectInfoView(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
-	app.renderPartialHTMX(w, "partials/project_info_view.html", project)
+
+	data := map[string]interface{}{
+		"Project": project,
+	}
+
+	app.renderPartialHTMX(w, "partials/project_info_view.html", data)
 }
 
 func (app *Application) ProjectInfoEdit(w http.ResponseWriter, r *http.Request) {
@@ -1356,7 +1436,7 @@ func (app *Application) AttachMediaToItem(w http.ResponseWriter, r *http.Request
 		}
 
 		// ✅ Fetch updated media list
-		mediaItems, err := app.ProjectModel.GetMedia(projectID)
+		mediaItems, err := app.ProjectModel.GetMediaPaginated(projectID, 5, 0)
 		if err != nil {
 			http.Error(w, "Failed to load project media", http.StatusInternalServerError)
 			return

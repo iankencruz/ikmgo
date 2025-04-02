@@ -54,6 +54,7 @@ func (app *Application) routes() http.Handler {
 		r.Post("/gallery/create", app.CreateGallery)
 		r.Delete("/gallery/{id}", app.DeleteGallery)
 		r.Post("/gallery/feature/{id}", app.SetFeaturedGallery) // Set Featured Galleryrou
+		r.Get("/gallery/{id}", app.EditGalleryForm)
 		r.Get("/gallery/edit/{id}", app.EditGalleryForm)
 		r.Post("/gallery/update/{id}", app.UpdateGallery)
 
@@ -61,9 +62,10 @@ func (app *Application) routes() http.Handler {
 		r.Post("/gallery/{id}/publish", app.SetGalleryVisibility)
 
 		// Projects
-		r.Get("/projects", app.AdminProjects)                   // list view
-		r.Get("/project/create", app.CreateProjectForm)         // show form
-		r.Post("/project/create", app.CreateProject)            // handle form submit
+		r.Get("/projects", app.AdminProjects)           // list view
+		r.Get("/project/create", app.CreateProjectForm) // show form
+		r.Post("/project/create", app.CreateProject)    // handle form submit
+		r.Get("/project/{id}", app.EditProjectForm)
 		r.Get("/project/edit/{id}", app.EditProjectForm)        // show edit form
 		r.Post("/project/edit/{id}", app.UpdateProject)         // handle update
 		r.Post("/project/{id}/cover", app.SetProjectCoverImage) // HTMX: update cover

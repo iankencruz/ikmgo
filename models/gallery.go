@@ -247,14 +247,16 @@ func (g *GalleryModel) SetPublished(id int, published bool) error {
 }
 
 // GetMedia returns all media linked to a gallery via the gallery_media join table
-func (g *GalleryModel) GetMedia(galleryID int) ([]*Media, error) {
+
+func (g *GalleryModel) GetMediaPaginated(galleryID, limit, offset int) ([]*Media, error) {
 	rows, err := g.DB.Query(context.Background(), `
 		SELECT m.id, m.file_name, m.thumbnail_url, m.full_url, gm.position
 		FROM gallery_media gm
 		JOIN media m ON gm.media_id = m.id
 		WHERE gm.gallery_id = $1
 		ORDER BY gm.position ASC
-	`, galleryID)
+		LIMIT $2 OFFSET $3
+	`, galleryID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

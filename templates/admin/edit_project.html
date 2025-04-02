@@ -88,33 +88,8 @@
   <h2 class="text-xl font-semibold">Reorder Images</h2>
 </div>
 
-<div
-  id="sortableGrid"
-  class="sortable grid grid-cols-3 gap-4 mt-4"
-  data-project="{{ .Project.ID }}"
->
-  {{ range .Media }}
-  <div
-    class="sortable-item border border-gray-300 p-2 rounded shadow-lg"
-    data-id="{{ .ID }}"
-  >
-    <img src="{{ .ThumbnailURL }}" class="w-full h-40 object-cover rounded" />
-    <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
-
-    <form
-      hx-put="/admin/media/unlink"
-      hx-target="closest .sortable-item"
-      hx-swap="outerHTML"
-      hx-on:afterRequest="this.closest('.sortable-item').remove()"
-      class="mt-2 text-center"
-    >
-      <input type="hidden" name="media_id" value="{{ .ID }}" />
-      <input type="hidden" name="project_id" value="{{ $.Project.ID }}" />
-      <button type="submit" class="text-red-500">Unlink</button>
-    </form>
-  </div>
-  {{ end }}
-</div>
+<!-- Media Grid (HTMX wrapper) -->
+{{ template "admin_media_grid" . }}
 
 <!-- Cover Modal -->
 <div
@@ -212,7 +187,7 @@
   document.addEventListener("DOMContentLoaded", () => switchToTab("info"));
 
   document.addEventListener("DOMContentLoaded", function () {
-    const sortableGrid = document.querySelector(".sortable");
+    const sortableGrid = document.querySelector(".sortableGrid");
 
     new Sortable(sortableGrid, {
       animation: 150,

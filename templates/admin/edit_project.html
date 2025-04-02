@@ -102,7 +102,7 @@
     <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
 
     <form
-      hx-post="/admin/media/unlink"
+      hx-put="/admin/media/unlink"
       hx-target="closest .sortable-item"
       hx-swap="outerHTML"
       hx-on:afterRequest="this.closest('.sortable-item').remove()"

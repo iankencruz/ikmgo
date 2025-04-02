@@ -131,31 +131,6 @@
         });
     });
   }
-
-  // ✅ Global handler for HTMX swaps
-  document.body.addEventListener("htmx:afterSwap", function (evt) {
-    if (
-      evt.detail &&
-      evt.detail.xhr &&
-      evt.detail.xhr.responseText.includes("contact-success")
-    ) {
-      const alertEl = document.getElementById("contact-success");
-
-      // 🕓 Fade out after 7 seconds
-      setTimeout(() => {
-        if (!alertEl) return;
-
-        alertEl.classList.remove("opacity-100");
-        alertEl.classList.add("opacity-0");
-
-        // ⏳ Remove after fade transition
-        setTimeout(() => alertEl.remove(), 700); // match transition duration
-      }, 7000);
-
-      // 🧼 Reset form
-      document.getElementById("contact-form")?.reset();
-    }
-  });
 </script>
 
 {{ end }}
@@ -163,6 +138,6 @@
 <!-- -->
 {{define "contact_success"}}
 <!-- -->
-{{ template "partials/contact_success.html" . }}
+{{ template "partials/alert_toast.html" . }}
 <!---->
 {{end}}

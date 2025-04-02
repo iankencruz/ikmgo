@@ -100,15 +100,18 @@
   >
     <img src="{{ .ThumbnailURL }}" class="w-full h-40 object-cover rounded" />
     <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
-    <button
-      hx-delete="/admin/media/{{ .ID }}"
-      hx-confirm="Are you sure?"
-      hx-target="closest div"
+
+    <form
+      hx-post="/admin/media/unlink"
+      hx-target="closest .sortable-item"
       hx-swap="outerHTML"
-      class="text-red-500 block mx-auto mt-2"
+      hx-on:afterRequest="this.closest('.sortable-item').remove()"
+      class="mt-2 text-center"
     >
-      Delete
-    </button>
+      <input type="hidden" name="media_id" value="{{ .ID }}" />
+      <input type="hidden" name="project_id" value="{{ $.Project.ID }}" />
+      <button type="submit" class="text-red-500">Unlink</button>
+    </form>
   </div>
   {{ end }}
 </div>

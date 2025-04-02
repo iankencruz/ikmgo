@@ -1,166 +1,103 @@
 {{ define "content" }}
-<h1 class="text-2xl font-bold mb-4">Edit Gallery: {{ .Gallery.Title }}</h1>
+<h1 class="text-2xl font-bold mb-6">Edit Gallery: {{ .Gallery.Title }}</h1>
 
-<div class="grid grid-cols-12 w-full justify-between gap-x-12">
-  <form
-    hx-post="/admin/gallery/update/{{ .Gallery.ID }}"
-    class="space-y-4 col-span-8"
-  >
-    <div>
-      <label class="block font-medium text-gray-700">Gallery Title</label>
-      <input
-        type="text"
-        name="title"
-        value="{{ .Gallery.Title }}"
-        class="border rounded w-full p-2"
-      />
-    </div>
+<!-- Desktop Tabs -->
+<div class="hidden sm:block">
+  <div class="border-b border-gray-200">
+    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+      <a
+        href="#"
+        class="tab-link border-b-2 border-indigo-500 text-indigo-600 px-1 py-4 text-sm font-medium"
+        onclick="switchToTab('info', event)"
+        >Gallery Info</a
+      >
+      <a
+        href="#"
+        class="tab-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 px-1 py-4 text-sm font-medium"
+        onclick="switchToTab('cover', event)"
+        >Cover Image</a
+      >
+    </nav>
+  </div>
+</div>
 
-    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
-      Save Changes
-    </button>
-  </form>
+<div id="tab-content">
+  <!-- Gallery Info Tab -->
+  <div id="info" class="tab-pane block mt-6">
+    <form
+      hx-post="/admin/gallery/{{ .Gallery.ID }}/update"
+      hx-target="body"
+      hx-swap="outerHTML"
+      class="space-y-4"
+    >
+      <div>
+        <label class="block font-medium text-gray-700">Gallery Title</label>
+        <input
+          type="text"
+          name="title"
+          value="{{ .Gallery.Title }}"
+          class="border rounded w-full p-2"
+        />
+      </div>
+      <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
+        Save Changes
+      </button>
+    </form>
+  </div>
 
-  <div class="col-span-4">
-    <div class="relative w-full max-w-sm rounded-lg shadow-md">
-      <!-- Cover preview -->
+  <!-- Cover Image Tab -->
+  <div id="cover" class="tab-pane hidden mt-6">
+    <div class="mb-10 bg-white border border-gray-200 rounded-lg p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-800">Cover Image</h2>
+        <button
+          type="button"
+          onclick="document.getElementById('coverModal').classList.remove('hidden')"
+          class="text-sm text-indigo-600 hover:underline"
+        >
+          Change Cover
+        </button>
+      </div>
+
       <div id="cover-preview">
         {{ if .Gallery.CoverImageURL }}
         <img
           src="{{ .Gallery.CoverImageURL }}"
-          alt="Cover Image"
           class="w-full rounded shadow h-96 object-cover"
         />
         {{ else }}
         <div
-          class="w-full h-40 bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center rounded-lg"
+          class="w-full max-w-md h-40 flex items-center justify-center bg-gray-100 text-gray-500 border rounded border-dashed"
         >
-          <span class="text-gray-400 text-sm">No Cover Selected</span>
+          No cover image selected
         </div>
         {{ end }}
       </div>
-
-      <!-- Top-right button -->
-      <div class="absolute top-2 right-2 z-10">
-        <button
-          type="button"
-          onclick="document.getElementById('coverModal').classList.remove('hidden')"
-          class="inline-flex items-center rounded-md bg-white/80 px-2 py-1 text-xs font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-white"
-        >
-          Edit
-        </button>
-      </div>
-    </div>
-    <!-- end floating cover-->
-  </div>
-  <!-- Modal -->
-  <div
-    id="coverModal"
-    class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/50"
-    aria-labelledby="modal-title"
-    role="dialog"
-    aria-modal="true"
-  >
-    <div class="flex min-h-full items-center justify-center p-4 sm:p-0">
-      <div
-        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl"
-      >
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">
-            Select a Cover Image
-          </h3>
-
-          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-            {{ range .Media }}
-            <button
-              hx-post="/admin/gallery/{{ $.Gallery.ID }}/cover"
-              hx-vals='{"media_id": "{{ .ID }}"}'
-              hx-target="#cover-preview"
-              hx-swap="innerHTML"
-              onclick="document.getElementById('coverModal').classList.add('hidden')"
-              class="aspect-square overflow-hidden rounded-lg border hover:ring-2 hover:ring-indigo-500"
-            >
-              <img
-                src="{{ .ThumbnailURL }}"
-                alt="{{ .FileName }}"
-                class="w-full h-full object-cover"
-              />
-            </button>
-            {{ end }}
-          </div>
-        </div>
-
-        <div class="bg-gray-50 px-4 py-3 flex justify-end">
-          <button
-            type="button"
-            onclick="document.getElementById('coverModal').classList.add('hidden')"
-            class="inline-flex justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
     </div>
   </div>
-
-  <!-- end col span 4 2-->
 </div>
 
-<!-- Upload Media -->
-<h2 class="text-xl font-bold mt-6">Upload New Media</h2>
+<!-- Divider -->
+<div class="relative mt-40 py-4">
+  <div class="absolute inset-0 flex items-center" aria-hidden="true">
+    <div class="w-full border-t border-gray-300"></div>
+  </div>
+</div>
 
-<!-- prettier-ignore-->
-{{ template "partials/upload_media_button.html" (dict
-  "ModalURL" (printf "/admin/media/upload-modal?gallery_id=%d" .Gallery.ID)
-  "Label" "Upload Gallery Media"
-) }}
+<!-- Upload & Reorder -->
+<div class="flex flex-col lg:flex-row py-4 justify-between items-center">
+  <h2 class="text-xl font-semibold">Upload Media</h2>
+  <!-- prettier-ignore-->
+  {{ template "partials/upload_media_button.html" (dict 
+  "ModalURL" (printf "/admin/media/upload-modal?gallery_id=%d" .Gallery.ID) 
+  "Label" "Upload Gallery Media" 
+  )}}
+</div>
 
-<!-- ✅ View Toggle Buttons -->
-<div class="flex justify-between items-center mt-6">
+<div class="flex justify-between items-center mt-8">
   <h2 class="text-xl font-semibold">Reorder Images</h2>
-  <div class="flex space-x-2">
-    <button
-      id="gridViewBtn"
-      class="px-4 py-2 bg-gray-300 text-gray-700 rounded"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke-width="1.5"
-        stroke="currentColor"
-        class="size-6"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 0 1-1.125-1.125v-3.75ZM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-8.25ZM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-2.25Z"
-        />
-      </svg>
-    </button>
-    <button
-      id="tableViewBtn"
-      class="px-4 py-2 bg-gray-300 text-gray-700 rounded"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke-width="1.5"
-        stroke="currentColor"
-        class="size-6"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-        />
-      </svg>
-    </button>
-  </div>
 </div>
 
-<!-- ✅ Sortable Grid View (Default) -->
 <div
   id="sortableGrid"
   class="sortable grid grid-cols-3 gap-4 mt-4"
@@ -170,160 +107,117 @@
   <div
     class="sortable-item border border-gray-300 p-2 rounded shadow-lg"
     data-id="{{ .ID }}"
-    data-gallery="{{ .GalleryID }}"
   >
     <img src="{{ .ThumbnailURL }}" class="w-full h-40 object-cover rounded" />
     <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
-    <button
-      hx-delete="/admin/media/{{ .ID }}"
-      hx-confirm="Are you sure?"
-      hx-target="closest div"
+
+    <form
+      hx-put="/admin/media/unlink"
+      hx-target="closest .sortable-item"
       hx-swap="outerHTML"
-      class="text-red-500 block mx-auto mt-2"
+      hx-on:afterRequest="this.closest('.sortable-item').remove()"
+      class="mt-2 text-center"
     >
-      Delete
-    </button>
+      <input type="hidden" name="media_id" value="{{ .ID }}" />
+      <input type="hidden" name="gallery_id" value="{{ $.Gallery.ID }}" />
+      <button type="submit" class="text-red-500">Unlink</button>
+    </form>
   </div>
   {{ end }}
 </div>
 
-<!-- ✅ Sortable Table View (Hidden by Default) -->
-<table
-  id="sortableTable"
-  class="w-full mt-4 border-collapse border border-gray-300 hidden"
+<!-- Cover Modal -->
+<div
+  id="coverModal"
+  class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/50"
+  role="dialog"
+  aria-modal="true"
 >
-  <thead>
-    <tr class="bg-gray-200">
-      <th class="border border-gray-300 px-4 py-2">Order</th>
-      <th class="border border-gray-300 px-4 py-2">Preview</th>
-      <th class="border border-gray-300 px-4 py-2">File Name</th>
-      <th class="border border-gray-300 px-4 py-2">Actions</th>
-    </tr>
-  </thead>
-  <tbody class="sortable" data-gallery="{{ .Gallery.ID }}">
-    {{ range .Media }}
-    <tr
-      data-id="{{ .ID }}"
-      data-gallery="{{ .GalleryID }}"
-      class="sortable-item"
-    >
-      <td class="border border-gray-300 px-4 py-2 cursor-move">☰</td>
-      <td class="border border-gray-300 px-4 py-2">
-        <img src="{{ .ThumbnailURL }}" class="w-20 h-20 object-cover" />
-      </td>
-      <td class="border border-gray-300 px-4 py-2">{{ .FileName }}</td>
-      <td class="border border-gray-300 px-4 py-2">
+  <div class="flex min-h-full items-center justify-center p-4">
+    <div class="bg-white w-full max-w-4xl rounded-lg shadow-lg overflow-hidden">
+      <div class="p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">
+          Select Cover Image
+        </h3>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+          {{ range .Media }}
+          <button
+            hx-post="/admin/gallery/{{ $.Gallery.ID }}/cover"
+            hx-vals='{"media_id": "{{ .ID }}"}'
+            hx-target="#cover-preview"
+            hx-swap="innerHTML"
+            onclick="document.getElementById('coverModal').classList.add('hidden')"
+            class="aspect-square overflow-hidden rounded border hover:ring-2 hover:ring-indigo-500"
+          >
+            <img src="{{ .ThumbnailURL }}" class="object-cover w-full h-full" />
+          </button>
+          {{ end }}
+        </div>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 flex justify-end">
         <button
-          hx-delete="/admin/media/{{ .ID }}"
-          hx-confirm="Are you sure?"
-          hx-target="closest tr"
-          hx-swap="outerHTML"
-          class="text-red-500"
+          type="button"
+          onclick="document.getElementById('coverModal').classList.add('hidden')"
+          class="px-4 py-2 bg-white border rounded-md text-gray-700 hover:bg-gray-100"
         >
-          Delete
+          Cancel
         </button>
-      </td>
-    </tr>
-    {{ end }}
-  </tbody>
-</table>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const gridViewBtn = document.getElementById("gridViewBtn");
-    const tableViewBtn = document.getElementById("tableViewBtn");
-    const sortableGrid = document.getElementById("sortableGrid");
-    const sortableTable = document.getElementById("sortableTable");
-    const displayModeInput = document.getElementById("display_mode");
+  function switchToTab(tabName, event = null) {
+    if (event) event.preventDefault();
+    document
+      .querySelectorAll(".tab-pane")
+      .forEach((pane) => pane.classList.add("hidden"));
+    document.getElementById(tabName)?.classList.remove("hidden");
+    document.querySelectorAll(".tab-link").forEach((link) => {
+      link.classList.remove("border-indigo-500", "text-indigo-600");
+      link.classList.add("border-transparent", "text-gray-500");
+    });
+    document.querySelectorAll(`.tab-link`).forEach((link) => {
+      if (link.textContent.trim() === getTabLabel(tabName)) {
+        link.classList.add("border-indigo-500", "text-indigo-600");
+        link.classList.remove("border-transparent", "text-gray-500");
+      }
+    });
+  }
 
-    /** ✅ Initialize Sortable.js */
-    function initSortable() {
-      document.querySelectorAll(".sortable").forEach(function (el) {
-        new Sortable(document.querySelector(".sortable"), {
-          animation: 150,
-          onEnd: function () {
-            const mediaIDs = Array.from(
-              document.querySelectorAll(".sortable-item"),
-            ).map((el) => el.dataset.id);
+  function getTabLabel(tabValue) {
+    const map = { info: "Gallery Info", cover: "Cover Image" };
+    return map[tabValue] || tabValue;
+  }
 
-            const galleryID = parseInt(
-              document.querySelector(".sortable").dataset.gallery,
-              10,
-            );
+  document.addEventListener("DOMContentLoaded", () => {
+    switchToTab("info");
 
-            fetch("/admin/media/update-order-bulk", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                gallery_id: galleryID,
-                order: mediaIDs.map(Number), // ordered array of media IDs
-              }),
-            }).then((res) => {
-              if (!res.ok) {
-                console.error("❌ Failed to update media positions");
-              }
-            });
-          },
+    const sortableGrid = document.querySelector(".sortable");
+    new Sortable(sortableGrid, {
+      animation: 150,
+      onEnd: function () {
+        const mediaIDs = Array.from(
+          sortableGrid.querySelectorAll(".sortable-item"),
+        ).map((el) => parseInt(el.dataset.id, 10));
+        const galleryID = parseInt(sortableGrid.dataset.gallery, 10);
+
+        fetch("/admin/media/update-order-bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            gallery_id: galleryID,
+            order: mediaIDs,
+          }),
+        }).then((res) => {
+          if (!res.ok) {
+            console.error("❌ Failed to update media positions");
+          }
         });
-      });
-    }
-
-    // ✅ Initialize Sortable on page load
-    initSortable();
-
-    // ✅ Re-initialize Sortable when HTMX updates media items
-    document.addEventListener("htmx:afterSwap", function (evt) {
-      if (evt.target.closest(".sortable")) {
-        initSortable();
-      }
-    });
-
-    /** ✅ Handle View Toggle */
-    function setViewMode(mode) {
-      if (mode === "grid") {
-        sortableGrid.classList.remove("hidden");
-        sortableTable.classList.add("hidden");
-        gridViewBtn.classList.add("bg-blue-500", "text-white");
-        tableViewBtn.classList.remove("bg-blue-500", "text-white");
-        displayModeInput.value = "grid";
-      } else {
-        sortableTable.classList.remove("hidden");
-        sortableGrid.classList.add("hidden");
-        tableViewBtn.classList.add("bg-blue-500", "text-white");
-        gridViewBtn.classList.remove("bg-blue-500", "text-white");
-        displayModeInput.value = "table";
-      }
-    }
-
-    // ✅ Set the default view mode on page load
-    const currentMode = localStorage.getItem("display_mode") || "grid";
-    setViewMode(currentMode);
-
-    // ✅ Update view mode and store in localStorage
-    gridViewBtn.addEventListener("click", function () {
-      setViewMode("grid");
-      localStorage.setItem("display_mode", "grid");
-    });
-
-    tableViewBtn.addEventListener("click", function () {
-      setViewMode("table");
-      localStorage.setItem("display_mode", "table");
-    });
-
-    /** ✅ Ensure new media uploads respect the current display mode */
-    document.addEventListener("htmx:beforeRequest", function (evt) {
-      const uploadForm = evt.target.closest("form");
-      if (uploadForm && uploadForm.querySelector("#display_mode")) {
-        uploadForm.querySelector("#display_mode").value =
-          localStorage.getItem("display_mode") || "grid";
-      }
-    });
-
-    // ✅ Reinitialize view after new media is uploaded
-    document.addEventListener("htmx:afterSwap", function () {
-      const mode = localStorage.getItem("display_mode") || "grid";
-      setViewMode(mode);
+      },
     });
   });
 </script>

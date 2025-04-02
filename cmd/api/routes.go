@@ -53,9 +53,9 @@ func (app *Application) routes() http.Handler {
 		r.Get("/gallery/create", app.CreateGalleryForm)
 		r.Post("/gallery/create", app.CreateGallery)
 		r.Delete("/gallery/{id}", app.DeleteGallery)
-		r.Post("/gallery/feature/{id}", app.SetFeaturedGallery) // Set Featured Gallery
+		r.Post("/gallery/feature/{id}", app.SetFeaturedGallery) // Set Featured Galleryrou
 		r.Get("/gallery/edit/{id}", app.EditGalleryForm)
-		r.Post("/gallery/{id}/update", app.UpdateGallery)
+		r.Post("/gallery/update/{id}", app.UpdateGallery)
 
 		r.Post("/gallery/{galleryID}/cover", app.SetCoverImage)
 		r.Post("/gallery/{id}/publish", app.SetGalleryVisibility)
@@ -85,8 +85,9 @@ func (app *Application) routes() http.Handler {
 		r.Get("/media/upload", app.UploadMediaForm)
 		r.Post("/media/upload", app.UploadMedia)
 		r.Delete("/media/{id}", app.DeleteMedia)
-
+		r.Post("/media/attach", app.AttachMediaToItem)
 		r.Post("/media/update-order-bulk", app.UpdateMediaOrderBulk)
+		r.Put("/media/unlink", app.UnlinkMediaFromItem)
 
 		// Contacts
 		r.Get("/contacts", app.AdminContacts)
@@ -96,6 +97,9 @@ func (app *Application) routes() http.Handler {
 		r.Post("/settings", app.UpdateSettings)
 		r.Get("/settings/select-about-image", app.GetAboutMeImageModal)
 		r.Post("/settings/set-about-image", app.SetAboutMeImage)
+
+		// Toast
+		r.Get("/toast", app.Toast)
 
 	})
 

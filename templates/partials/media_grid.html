@@ -1,6 +1,6 @@
-{{ define "project_component" }}
+{{ define "media_grid" }}
 <div
-  id="project-gallery"
+  id='{{ or .ID "media-grid" }}'
   class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1"
 >
   {{ if not .Media }}
@@ -44,6 +44,7 @@
   </div>
   {{ end }}
 
+  <!-- 💡 Lightbox Modal (shared between views) -->
   <div
     id="lightboxModal"
     class="fixed inset-0 flex items-center justify-center bg-black/80 hidden z-50"
@@ -72,5 +73,5 @@
       class="max-h-[80vh] max-w-[90vw] mx-auto"
     />
   </div>
-  {{ end }}
 </div>
+{{ end }}

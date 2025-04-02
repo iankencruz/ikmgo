@@ -14,15 +14,15 @@
     <!-- MOBILE OFF-CANVAS SIDEBAR -->
     {{ if not .HideSidebar }} {{ template "navbar" . }} {{ end }}
     <!-- MAIN CONTENT -->
-    <main class=" {{if not .HideSidebar }}  lg:pl-72 {{ end }}">
+    <main class=" {{if not .HideSidebar }}  lg:pl-72 {{ end }} ">
       <!-- Your content goes here -->
       {{ template "content" . }}
     </main>
-    <!-- JavaScript for open/close sidebar -->
-    <script src="/static/js/main.js"></script>
     <!-- JavaScript for  Gallery Lightbox -->
     <script src="/static/js/gallery.js" defer></script>
     <script src="/static/js/htmx.min.js" defer></script>
+    <!-- JavaScript for open/close sidebar -->
+    <script src="/static/js/main.js"></script>
   </body>
 </html>
 {{ end }}

@@ -2,7 +2,7 @@ package models
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -12,7 +12,6 @@ type Media struct {
 	FileName     string
 	ThumbnailURL string
 	FullURL      string
-	GalleryID    sql.NullInt32
 	MimeType     string
 	EmbedURL     *string
 	Position     int
@@ -33,7 +32,7 @@ func (m *MediaModel) InsertAndReturnID(fileName, fullURL, thumbURL string) (int,
 	return id, err
 }
 
-func (m *MediaModel) InsertProjectMedia(fileName, url, thumbURL string, projectID, position int) (int, error) {
+func (m *MediaModel) UploadAndLinkProjectMedia(fileName, url, thumbURL string, projectID, position int) (int, error) {
 	var mediaID int
 	err := m.DB.QueryRow(context.Background(),
 		`INSERT INTO media (file_name, full_url, thumbnail_url, position, project_id)
@@ -50,6 +49,30 @@ func (m *MediaModel) InsertProjectMedia(fileName, url, thumbURL string, projectI
 		projectID, mediaID)
 
 	return mediaID, err
+}
+
+func (m *MediaModel) InsertProjectMedia(projectID, mediaID int) error {
+	query := `
+		INSERT INTO project_media (project_id, media_id, position)
+		VALUES ($1, $2, (
+			SELECT COALESCE(MAX(position), 0) + 1 FROM project_media WHERE project_id = $1
+		))
+		ON CONFLICT DO NOTHING;
+	`
+	_, err := m.DB.Exec(context.Background(), query, projectID, mediaID)
+	return err
+}
+
+func (m *MediaModel) InsertGalleryMedia(galleryID, mediaID int) error {
+	query := `
+		INSERT INTO gallery_media (gallery_id, media_id, position)
+		VALUES ($1, $2, (
+			SELECT COALESCE(MAX(position), 0) + 1 FROM gallery_media WHERE gallery_id = $1
+		))
+		ON CONFLICT DO NOTHING;
+	`
+	_, err := m.DB.Exec(context.Background(), query, galleryID, mediaID)
+	return err
 }
 
 // --- Get methods ---
@@ -108,11 +131,11 @@ func (m *MediaModel) GetByGalleryID(galleryID int) ([]*Media, error) {
 }
 
 func (m *MediaModel) GetByID(id int) (*Media, error) {
+	query := `SELECT id, file_name, full_url, thumbnail_url, mime_type, embed_url FROM media WHERE id = $1`
+	row := m.DB.QueryRow(context.Background(), query, id)
+
 	var media Media
-	err := m.DB.QueryRow(context.Background(),
-		`SELECT id, file_name, full_url, thumbnail_url, embed_url, mime_type
-		 FROM media WHERE id = $1`,
-		id).Scan(&media.ID, &media.FileName, &media.FullURL, &media.ThumbnailURL, &media.EmbedURL, &media.MimeType)
+	err := row.Scan(&media.ID, &media.FileName, &media.FullURL, &media.ThumbnailURL, &media.MimeType, &media.EmbedURL)
 	if err != nil {
 		return nil, err
 	}
@@ -268,4 +291,64 @@ func (m *MediaModel) AttachToProject(projectID, mediaID, position int) error {
 		SET position = EXCLUDED.position
 	`, projectID, mediaID, position)
 	return err
+}
+
+func (m *MediaModel) GetUnlinkedMedia(joinTable, foreignKey string, id int) ([]Media, error) {
+	query := fmt.Sprintf(`
+		SELECT id, file_name, full_url, thumbnail_url, COALESCE(mime_type, '') AS mime_type, COALESCE(embed_url, '') AS embed_url
+		FROM media
+		WHERE id NOT IN (
+			SELECT media_id FROM %s WHERE %s = $1
+		)
+		ORDER BY id DESC
+	`, joinTable, foreignKey)
+
+	rows, err := m.DB.Query(context.Background(), query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var media []Media
+	for rows.Next() {
+		var m Media
+		err := rows.Scan(&m.ID, &m.FileName, &m.FullURL, &m.ThumbnailURL, &m.MimeType, &m.EmbedURL)
+		if err != nil {
+			return nil, err
+		}
+		media = append(media, m)
+	}
+	return media, nil
+}
+
+func (m *MediaModel) UnlinkMediaFromGallery(galleryID, mediaID int) error {
+	_, err := m.DB.Exec(context.Background(),
+		`DELETE FROM gallery_media WHERE gallery_id = $1 AND media_id = $2`,
+		galleryID, mediaID)
+	return err
+}
+
+func (m *MediaModel) UnlinkMediaFromProject(projectID, mediaID int) error {
+	_, err := m.DB.Exec(context.Background(),
+		`DELETE FROM project_media WHERE project_id = $1 AND media_id = $2`,
+		projectID, mediaID)
+	return err
+}
+
+func (m *MediaModel) GetByIDUnsafe(id int) (*Media, error) {
+	query := `
+	SELECT id, file_name, full_url, thumbnail_url,
+	       COALESCE(mime_type, '') AS mime_type,
+	       COALESCE(embed_url, '') AS embed_url
+	FROM media
+	WHERE id = $1`
+
+	var media Media
+
+	err := m.DB.QueryRow(context.Background(), query, id).
+		Scan(&media.ID, &media.FileName, &media.FullURL, &media.ThumbnailURL, &media.MimeType, &media.EmbedURL)
+	if err != nil {
+		return nil, err
+	}
+	return &media, nil
 }

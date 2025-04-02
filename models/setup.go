@@ -1,4 +1,4 @@
-package main
+package models
 
 import (
 	"context"
@@ -91,14 +91,14 @@ func CreateTablesIfNotExist(db *pgxpool.Pool) error {
 	return nil
 }
 
-func EnsureAdminUserExists(app *Application) error {
+func EnsureAdminUserExists(userModel *UserModel) error {
 	const (
 		defaultFname = "Admin"
 		defaultLname = "User"
 	)
 
 	log.Println("🔍 Checking for existing users...")
-	users, err := app.UserModel.GetAll()
+	users, err := userModel.GetAll()
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func EnsureAdminUserExists(app *Application) error {
 	if len(users) == 0 {
 		log.Println("⚠️ No users found. Creating default admin user...")
 
-		err := app.UserModel.Create(defaultFname, defaultLname, os.Getenv("ADMIN_EMAIL"), os.Getenv("ADMIN_PASS"))
+		err := userModel.Create(defaultFname, defaultLname, os.Getenv("ADMIN_EMAIL"), os.Getenv("ADMIN_PASS"))
 		if err != nil {
 			log.Printf("❌ Failed to create default admin user: %v", err)
 			return err

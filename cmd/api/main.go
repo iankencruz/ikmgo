@@ -115,12 +115,12 @@ func main() {
 		S3Bucket: s3Bucket,
 	}
 
-	if err := CreateTablesIfNotExist(app.DB); err != nil {
+	if err := models.CreateTablesIfNotExist(app.DB); err != nil {
 		log.Fatal(err)
 	}
 
 	// Ensure at least one admin user exists
-	if err := EnsureAdminUserExists(app); err != nil {
+	if err := models.EnsureAdminUserExists(app.UserModel); err != nil {
 		log.Fatalf("❌ Error bootstrapping admin user: %v", err)
 	}
 

@@ -9,8 +9,6 @@
     <!--HTMX-->
     <!-- Tailwind CSS (replace with your own build if needed) -->
     <link rel="stylesheet" href="/static/css/tailwind.css" />
-    <!-- JavaScript for open/close sidebar -->
-    <script src="/static/js/main.js"></script>
   </head>
 
   <body class="h-full">
@@ -31,21 +29,48 @@
         class="bg-white max-w-3xl mx-auto mt-24 p-6 rounded shadow"
       ></div>
     </div>
-    <script>
-      function closeModal() {
-        document.getElementById("modal").classList.add("hidden");
-        document.getElementById("modal-content").innerHTML = "";
-      }
-
-      document.body.addEventListener("htmx:afterRequest", function (evt) {
-        const form = evt.target.closest("form");
-        if (form?.getAttribute("hx-post") === "/admin/media/upload") {
-          closeModal();
-        }
-      });
-    </script>
-
     <script src="/static/js/htmx.min.js" defer></script>
+    <!-- JavaScript for open/close sidebar -->
+    <script src="/static/js/main.js"></script>
+
+    <!--<script>-->
+    <!--  function closeModal() {-->
+    <!--    document.getElementById("modal").classList.add("hidden");-->
+    <!--    document.getElementById("modal-content").innerHTML = "";-->
+    <!--  }-->
+    <!---->
+    <!--  document.body.addEventListener("htmx:afterRequest", function (evt) {-->
+    <!--    const form = evt.target.closest("form");-->
+    <!--    if (form?.getAttribute("hx-post") === "/admin/media/upload") {-->
+    <!--      closeModal();-->
+    <!--    }-->
+    <!--  });-->
+    <!---->
+    <!--  document.addEventListener("htmx:afterOnLoad", function (evt) {-->
+    <!--    const trigger = evt.detail.xhr.getResponseHeader(-->
+    <!--      "HX-Trigger-After-Settle",-->
+    <!--    );-->
+    <!--    if (trigger === "show-toast") {-->
+    <!--      fetch(-->
+    <!--        "/admin/toast?variant=success&heading=Media%20Linked&subtitle=Successfully%20attached%20to%20gallery",-->
+    <!--      )-->
+    <!--        .then((res) => res.text())-->
+    <!--        .then((html) =>-->
+    <!--          document.body.insertAdjacentHTML("beforeend", html),-->
+    <!--        );-->
+    <!--    }-->
+    <!---->
+    <!--    if (trigger === "show-toast-unlinked") {-->
+    <!--      fetch(-->
+    <!--        "/admin/toast?variant=warning&heading=Media%20Unlinked&subtitle=The%20media%20was%20removed%20from%20this%20item",-->
+    <!--      )-->
+    <!--        .then((res) => res.text())-->
+    <!--        .then((html) =>-->
+    <!--          document.body.insertAdjacentHTML("beforeend", html),-->
+    <!--        );-->
+    <!--    }-->
+    <!--  });-->
+    <!--</script>-->
   </body>
 </html>
 {{ end }}

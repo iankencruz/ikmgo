@@ -206,9 +206,9 @@ func (g *GalleryModel) GetByID(id int) (*Gallery, error) {
 			   (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
 		FROM galleries g
 		LEFT JOIN media m ON g.cover_image_id = m.id
-		ORDER BY g.id ASC
+		WHERE g.id = $1
 		`, id).
-		Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageURL)
+		Scan(&gallery.ID, &gallery.Title, &gallery.Published, &gallery.CoverImageURL, &gallery.MediaCount)
 
 	if err != nil {
 		log.Printf("⚠️ Scan fallback due to broken cover_image_id: %v", err)

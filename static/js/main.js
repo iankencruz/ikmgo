@@ -47,16 +47,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* Mobile Sidebar Start */
 
-/* Modal */
-//
-//function closeModal() {
-//  document.getElementById("modal").classList.add("hidden");
-//  document.getElementById("modal-content").innerHTML = "";
-//}
-//
-//document.body.addEventListener("htmx:afterRequest", function (evt) {
-//  const form = evt.target.closest("form");
-//  if (form?.getAttribute("hx-post") === "/admin/media/upload") {
-//    closeModal();
-//  }
-//});
+
+document.addEventListener("htmx:afterOnLoad", function(evt) {
+  const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger-After-Settle");
+
+  if (!trigger) return;
+
+  const toastMap = {
+    "show-toast": {
+      variant: "success",
+      heading: "Media Linked",
+      subtitle: "Successfully attached to gallery or project"
+    },
+    "show-toast-unlinked": {
+      variant: "warning",
+      heading: "Media Unlinked",
+      subtitle: "This media was removed from the gallery or project"
+    }
+  };
+
+  const toast = toastMap[trigger];
+  if (!toast) return;
+
+  fetch(`/admin/toast?variant=${toast.variant}&heading=${encodeURIComponent(toast.heading)}&subtitle=${encodeURIComponent(toast.subtitle)}`)
+    .then((res) => res.text())
+    .then((html) => {
+      document.body.insertAdjacentHTML("beforeend", html);
+
+      const el = document.querySelector(".toast-fade");
+      if (!el) return;
+
+      const fadeDuration = 700;
+      const displayTime = parseInt(el.dataset.timeout) || 7000;
+
+      setTimeout(() => {
+        el.classList.remove("opacity-100");
+        el.classList.add("opacity-0");
+
+        setTimeout(() => el.remove(), fadeDuration);
+      }, displayTime);
+    });
+});
+

@@ -1,4 +1,3 @@
-
 {{ define "content" }}
 <h1 class="text-2xl font-bold mb-6">Website Settings</h1>
 
@@ -6,23 +5,48 @@
 <div>
   <!-- Mobile -->
   <div class="grid grid-cols-1 sm:hidden mb-4">
-    <select onchange="switchToTab(this.value)"
-      class="w-full appearance-none rounded-md bg-white py-2 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600">
-      <option value="info">Info</option>
-      <option value="socials">Socials</option>
-    </select>
+    <label class="block font-semibold mb-1"
+      >Select tab
+      <select
+        onchange="switchToTab(this.value)"
+        aria-label="Select tab"
+        class="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-2 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
+      >
+        <option value="info">Info</option>
+        <option value="socials">Socials</option>
+      </select>
+      <svg
+        class="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end fill-gray-500"
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        aria-hidden="true"
+        data-slot="icon"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+          clip-rule="evenodd"
+        />
+      </svg>
+    </label>
   </div>
 
   <!-- Desktop -->
   <div class="hidden sm:block">
     <div class="border-b border-gray-200 mb-4">
       <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-        <a href="#" onclick="switchToTab('info', event)"
-          class="tab-link border-b-2 border-indigo-500 text-indigo-600 px-1 py-4 text-sm font-medium whitespace-nowrap">
+        <a
+          href="#"
+          onclick="switchToTab('info', event)"
+          class="tab-link border-b-2 border-indigo-500 text-indigo-600 px-1 py-4 text-sm font-medium whitespace-nowrap"
+        >
           Info
         </a>
-        <a href="#" onclick="switchToTab('socials', event)"
-          class="tab-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 px-1 py-4 text-sm font-medium whitespace-nowrap">
+        <a
+          href="#"
+          onclick="switchToTab('socials', event)"
+          class="tab-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 px-1 py-4 text-sm font-medium whitespace-nowrap"
+        >
           Socials
         </a>
       </nav>
@@ -30,8 +54,12 @@
   </div>
 </div>
 
-<form method="POST" action="/admin/settings" enctype="multipart/form-data" class="space-y-4">
-
+<form
+  method="POST"
+  action="/admin/settings"
+  enctype="multipart/form-data"
+  class="space-y-4"
+>
   <!-- Info Tab -->
   <div id="info" class="tab-pane block space-y-4">
     <div>
@@ -48,11 +76,16 @@
       <label class="block font-semibold mb-1">About Me Image</label>
       <div class="flex items-center gap-4">
         {{ if index .Settings "about_me_image" }}
-          <img src="{{ index .Settings "about_me_image" }}" class="w-32 h-32 rounded object-cover border border-gray-300" />
+        <img
+          src='{{ index .Settings " about_me_image" }}'
+          class="w-32 h-32 rounded object-cover border border-gray-300"
+        />
         {{ else }}
-          <div class="w-32 h-32 flex items-center justify-center bg-gray-100 border border-gray-300 text-gray-500 text-sm">
-            No image
-          </div>
+        <div
+          class="w-32 h-32 flex items-center justify-center bg-gray-100 border border-gray-300 text-gray-500 text-sm"
+        >
+          No image
+        </div>
         {{ end }}
         <button
           class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
@@ -72,7 +105,10 @@
         rows="8"
         name="about_description"
         class="w-full p-2 border border-gray-300 rounded"
-      >{{ index .Settings "about_description" }}</textarea>
+      >
+{{ index .Settings
+        "about_description" }}</textarea
+      >
     </div>
   </div>
 
@@ -118,17 +154,17 @@
   function switchToTab(id, e = null) {
     if (e) e.preventDefault();
 
-    document.querySelectorAll(".tab-pane").forEach(pane =>
-      pane.classList.add("hidden")
-    );
+    document
+      .querySelectorAll(".tab-pane")
+      .forEach((pane) => pane.classList.add("hidden"));
     document.getElementById(id)?.classList.remove("hidden");
 
-    document.querySelectorAll(".tab-link").forEach(link => {
+    document.querySelectorAll(".tab-link").forEach((link) => {
       link.classList.remove("border-indigo-500", "text-indigo-600");
       link.classList.add("border-transparent", "text-gray-500");
     });
 
-    document.querySelectorAll(".tab-link").forEach(link => {
+    document.querySelectorAll(".tab-link").forEach((link) => {
       if (link.textContent.trim().toLowerCase() === id) {
         link.classList.add("border-indigo-500", "text-indigo-600");
         link.classList.remove("border-transparent", "text-gray-500");
@@ -139,4 +175,3 @@
   document.addEventListener("DOMContentLoaded", () => switchToTab("info"));
 </script>
 {{ end }}
-

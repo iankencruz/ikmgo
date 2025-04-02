@@ -368,7 +368,7 @@ func (app *Application) UpdateGallery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/admin/galleries", http.StatusSeeOther)
+	http.Redirect(w, r, r.Header.Get("Referer"), 302)
 }
 
 // Create a New Gallery (POST)
@@ -942,7 +942,11 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 
 	// app.render(w, r, "partials/contact_success_modal.html", nil) // ✅ Correct
 
-	app.renderPartialHTMX(w, "partials/contact_success_modal", nil)
+	app.renderPartialHTMX(w, "partials/alert_toast.html", map[string]any{
+		"Heading":  "Message Sent!",
+		"Subtitle": "Your message has been submitted successfully.",
+		"Variant":  "success", // options: success, error, warning, info
+	})
 
 }
 
@@ -1240,20 +1244,46 @@ func (app *Application) SetAboutMeImage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{}
+	projectIDStr := r.URL.Query().Get("project_id")
+	galleryIDStr := r.URL.Query().Get("gallery_id")
 
-	if pid := r.URL.Query().Get("project_id"); pid != "" {
-		if projectID, err := strconv.Atoi(pid); err == nil {
-			data["ProjectID"] = projectID
+	if projectIDStr != "" {
+		projectID, _ := strconv.Atoi(projectIDStr)
+
+		existingMedia, err := app.MediaModel.GetUnlinkedMedia("project_media", "project_id", projectID)
+		if err != nil {
+			log.Printf("❌ Failed to load unlinked project media for project %d: %v", projectID, err)
+
+			http.Error(w, "Error loading media", http.StatusInternalServerError)
+			return
 		}
-	}
-	if gid := r.URL.Query().Get("gallery_id"); gid != "" {
-		if galleryID, err := strconv.Atoi(gid); err == nil {
-			data["GalleryID"] = galleryID
-		}
+
+		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]interface{}{
+			"ProjectID":     projectID,
+			"ExistingMedia": existingMedia,
+		})
+		return
 	}
 
-	app.renderPartialHTMX(w, "partials/upload_media_modal.html", data)
+	if galleryIDStr != "" {
+		galleryID, _ := strconv.Atoi(galleryIDStr)
+
+		existingMedia, err := app.MediaModel.GetUnlinkedMedia("gallery_media", "gallery_id", galleryID)
+		if err != nil {
+			http.Error(w, "Error loading media", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("💡 galleryID: %d", galleryID)
+
+		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
+			"GalleryID":     galleryID,
+			"ExistingMedia": existingMedia,
+		})
+		return
+	}
+
+	http.Error(w, "Missing project_id or gallery_id", http.StatusBadRequest)
 }
 
 func (app *Application) ProjectInfoView(w http.ResponseWriter, r *http.Request) {
@@ -1295,4 +1325,148 @@ func (app *Application) ProjectInfoUpdate(w http.ResponseWriter, r *http.Request
 	// Return updated view
 	project, _ := app.ProjectModel.GetByID(id)
 	app.renderPartialHTMX(w, "partials/project_info_view.html", project)
+}
+
+func (app *Application) AttachMediaToItem(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	mediaID, err := strconv.Atoi(r.FormValue("media_id"))
+	if err != nil {
+		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		return
+	}
+
+	// Handle attaching to project
+	if projectIDStr := r.FormValue("project_id"); projectIDStr != "" {
+		projectID, err := strconv.Atoi(projectIDStr)
+		if err != nil {
+			http.Error(w, "Invalid project ID", http.StatusBadRequest)
+			return
+		}
+
+		err = app.MediaModel.InsertProjectMedia(projectID, mediaID)
+		if err != nil {
+			log.Printf("❌ Failed to link media %d to project %d: %v", mediaID, projectID, err)
+			http.Error(w, "Failed to attach media to project", http.StatusInternalServerError)
+			return
+		}
+
+		// ✅ Fetch updated media list
+		mediaItems, err := app.ProjectModel.GetMedia(projectID)
+		if err != nil {
+			http.Error(w, "Failed to load project media", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("HX-Trigger", fmt.Sprintf("media-attached-%d", mediaID))
+		w.Header().Set("HX-Trigger-After-Settle", "show-toast")
+
+		// ✅ Render media_grid block inside edit_project.html
+		app.renderHTMX(w, "admin/edit_project.html", "media_grid", map[string]interface{}{
+			"Media": mediaItems,
+		})
+		return
+	}
+
+	// Handle attaching to gallery
+
+	if galleryIDStr := r.FormValue("gallery_id"); galleryIDStr != "" {
+		galleryID, err := strconv.Atoi(galleryIDStr)
+		if err != nil {
+			log.Printf("❌ Invalid gallery ID: %v", galleryIDStr)
+			http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+			return
+		}
+
+		log.Printf("📎 Linking media_id=%d to gallery_id=%d", mediaID, galleryID)
+
+		err = app.MediaModel.InsertGalleryMedia(galleryID, mediaID)
+		if err != nil {
+			log.Printf("❌ Failed to link media %d to gallery %d: %v", mediaID, galleryID, err)
+			http.Error(w, "Failed to attach media to gallery", http.StatusInternalServerError)
+			return
+		}
+
+		log.Println("🔍 Attempting GetByIDUnsafe...")
+		media, err := app.MediaModel.GetByIDUnsafe(mediaID)
+		if err != nil {
+			log.Printf("❌ GetByIDUnsafe failed for media_id=%d: %v", mediaID, err)
+			http.Error(w, "Media not found", http.StatusNotFound)
+			return
+		}
+
+		log.Printf("✅ Found media: ID=%d, File=%s", media.ID, media.FileName)
+
+		w.Header().Set("HX-Trigger", fmt.Sprintf("media-attached-%d", mediaID))
+		w.Header().Set("HX-Trigger-After-Settle", "show-toast")
+
+		app.renderPartialHTMX(w, "partials/media_item.html", map[string]interface{}{
+			"Media":     media,
+			"GalleryID": galleryID,
+		})
+
+		return
+	}
+
+	http.Error(w, "Missing project_id or gallery_id", http.StatusBadRequest)
+}
+
+func (app *Application) UnlinkMediaFromItem(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	mediaID, err := strconv.Atoi(r.FormValue("media_id"))
+	if err != nil {
+		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		return
+	}
+
+	// Project unlink
+	if projectIDStr := r.FormValue("project_id"); projectIDStr != "" {
+		projectID, _ := strconv.Atoi(projectIDStr)
+		err := app.MediaModel.UnlinkMediaFromProject(projectID, mediaID)
+		if err != nil {
+			http.Error(w, "Failed to unlink media from project", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("HX-Trigger-After-Settle", "show-toast-unlinked")
+		w.WriteHeader(http.StatusOK)
+
+		return
+	}
+
+	// Gallery unlink
+	if galleryIDStr := r.FormValue("gallery_id"); galleryIDStr != "" {
+		galleryID, _ := strconv.Atoi(galleryIDStr)
+		err := app.MediaModel.UnlinkMediaFromGallery(galleryID, mediaID)
+		if err != nil {
+			http.Error(w, "Failed to unlink media from gallery", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("HX-Trigger-After-Settle", "show-toast-unlinked")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	http.Error(w, "Missing project_id or gallery_id", http.StatusBadRequest)
+}
+
+func (app *Application) Toast(w http.ResponseWriter, r *http.Request) {
+	variant := r.URL.Query().Get("variant")
+	heading := r.URL.Query().Get("heading")
+	subtitle := r.URL.Query().Get("subtitle")
+
+	app.renderPartialHTMX(w, "partials/alert_toast.html", map[string]interface{}{
+		"Heading":  heading,
+		"Subtitle": subtitle,
+		"Variant":  variant,
+		"Timeout":  5000,
+	})
 }

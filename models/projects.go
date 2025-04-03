@@ -124,7 +124,10 @@ func (p *ProjectModel) GetMediaPaginated(projectID, limit, offset int) ([]*Media
 		if embed.Valid {
 			m.EmbedURL = &embed.String
 		}
-		m.MimeType = mime.String
+
+		if mime.Valid {
+			m.MimeType = &mime.String
+		}
 
 		media = append(media, &m)
 	}

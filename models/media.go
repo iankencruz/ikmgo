@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -12,7 +13,7 @@ type Media struct {
 	FileName     string
 	ThumbnailURL string
 	FullURL      string
-	MimeType     string
+	MimeType     *string
 	EmbedURL     *string
 	Position     int
 }
@@ -351,4 +352,46 @@ func (m *MediaModel) GetByIDUnsafe(id int) (*Media, error) {
 		return nil, err
 	}
 	return &media, nil
+}
+
+func (m *MediaModel) GetPaginated(limit, offset int) ([]*Media, error) {
+
+	rows, err := m.DB.Query(context.Background(), `
+	SELECT id, file_name, thumbnail_url, full_url, mime_type, embed_url
+	FROM media
+	ORDER BY id DESC
+	LIMIT $1 OFFSET $2
+`, limit, offset)
+	if err != nil {
+		log.Printf("❌ GetPaginated query error: %v", err) // ✅ this must be here
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var mediaList []*Media
+	for rows.Next() {
+		var media Media
+		err := rows.Scan(
+			&media.ID,
+			&media.FileName,
+			&media.ThumbnailURL,
+			&media.FullURL,
+			&media.MimeType,
+			&media.EmbedURL,
+		)
+		if err != nil {
+			log.Printf("❌ GetPaginated scan error: %v", err)
+			return nil, err
+		}
+		mediaList = append(mediaList, &media)
+	}
+
+	return mediaList, nil
+}
+
+func (m *MediaModel) Count() (int, error) {
+	var count int
+	err := m.DB.QueryRow(context.Background(), `SELECT COUNT(*) FROM media`).Scan(&count)
+	return count, err
 }

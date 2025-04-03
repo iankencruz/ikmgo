@@ -378,6 +378,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 	data := map[string]interface{}{
 		"Title":             "Edit Gallery",
 		"Media":             media,
+		"MediaCount":        gallery.MediaCount,
 		"Item":              gallery,
 		"Page":              page,
 		"Limit":             limit,
@@ -527,7 +528,7 @@ func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) 
 	offset := page * limit
 
 	// 📦 Paginated Media
-	media, err := app.ProjectModel.GetMediaPaginated(id, limit, offset)
+	media, err := app.ProjectModel.GetMediaPaginated(id, limit+1, offset)
 	if err != nil {
 		log.Printf("❌ Error fetching media for project %d: %v", id, err)
 		http.Error(w, "Error loading media", http.StatusInternalServerError)
@@ -542,9 +543,12 @@ func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) 
 		media = media[:limit] // trim the extra item
 	}
 
+	log.Printf("🧪 EditProjectForm: Page=%d | Limit=%d | TotalMedia=%d | HasNext=%t", page, limit, project.MediaCount, hasNext)
+
 	data := map[string]interface{}{
 		"Title":             "Edit Project",
 		"Media":             media,
+		"MediaCount":        project.MediaCount,
 		"Project":           project,
 		"Item":              project,
 		"Page":              page,
@@ -659,17 +663,50 @@ func (app *Application) DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) AdminMedia(w http.ResponseWriter, r *http.Request) {
-	media, err := app.MediaModel.GetAll()
+	pageStr := r.URL.Query().Get("page")
+	page := 0
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+			page = p
+		}
+	}
+	limit := 15
+	offset := page * limit
+
+	totalMedia, err := app.MediaModel.Count()
 	if err != nil {
-		log.Printf("❌ Error fetching media: %v", err)
-		http.Error(w, "Error fetching media", http.StatusInternalServerError)
+		log.Printf("❌ Failed to count media: %v", err)
+		http.Error(w, "Unable to count media", http.StatusInternalServerError)
 		return
 	}
 
+	media, err := app.MediaModel.GetPaginated(limit, offset)
+	if err != nil {
+		log.Printf("❌ Failed to load paginated media: %v", err)
+		http.Error(w, "Unable to load media", http.StatusInternalServerError)
+		return
+	}
+
+	totalPages := int(math.Ceil(float64(totalMedia) / float64(limit)))
+	hasNext := (page+1)*limit < totalMedia
+
 	data := map[string]interface{}{
-		"Title":      "Manage Media",
-		"Media":      media,
-		"ActiveLink": "media",
+		"Title":             "Manage Media",
+		"Media":             media,
+		"MediaCount":        totalMedia,
+		"Page":              page,
+		"Limit":             limit,
+		"HasNext":           hasNext,
+		"TotalPages":        totalPages,
+		"PaginationBaseURL": "/admin/media",
+		"PaginationTarget":  "#sortableGrid",
+		"ActiveLink":        "media",
+	}
+
+	if utils.IsHTMX(r) {
+		app.renderPartialHTMX(w, "admin_media_grid", data)
+		log.Printf("HTMX: Rendered media grid for page %d", page)
+		return
 	}
 
 	app.render(w, r, "admin/media.html", data)
@@ -1322,13 +1359,13 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 	projectIDStr := r.URL.Query().Get("project_id")
 	galleryIDStr := r.URL.Query().Get("gallery_id")
 
+	// 💡 Case 1: Project context
 	if projectIDStr != "" {
 		projectID, _ := strconv.Atoi(projectIDStr)
 
 		existingMedia, err := app.MediaModel.GetUnlinkedMedia("project_media", "project_id", projectID)
 		if err != nil {
 			log.Printf("❌ Failed to load unlinked project media for project %d: %v", projectID, err)
-
 			http.Error(w, "Error loading media", http.StatusInternalServerError)
 			return
 		}
@@ -1336,10 +1373,12 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]interface{}{
 			"ProjectID":     projectID,
 			"ExistingMedia": existingMedia,
+			"Context":       "project",
 		})
 		return
 	}
 
+	// 💡 Case 2: Gallery context
 	if galleryIDStr != "" {
 		galleryID, _ := strconv.Atoi(galleryIDStr)
 
@@ -1354,11 +1393,16 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
 			"GalleryID":     galleryID,
 			"ExistingMedia": existingMedia,
+			"Context":       "gallery",
 		})
 		return
 	}
 
-	http.Error(w, "Missing project_id or gallery_id", http.StatusBadRequest)
+	// 💡 Case 3: Standalone / unlinked media (admin/media page)
+	app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
+		"ExistingMedia": nil,
+		"Context":       "standalone",
+	})
 }
 
 func (app *Application) ProjectInfoView(w http.ResponseWriter, r *http.Request) {

@@ -1,8 +1,10 @@
 {{ define "pagination" }}
 <div class="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+  <!-- prettier-ignore -->
+
   <p class="text-sm text-gray-500">
-    Showing {{ add (mul .Page .Limit) 1 }} to {{ min (mul (add .Page 1) .Limit)
-    .Item.MediaCount }} of {{ .Item.MediaCount }} results
+    Showing {{ add (mul .Page .Limit) 1 }} to
+    {{ min (mul (add .Page 1) .Limit) .MediaCount }} of {{ .MediaCount }} results
   </p>
 
   <div class="isolate inline-flex -space-x-px rounded-md shadow-xs">
@@ -12,7 +14,7 @@
     <button
       hx-get="{{ .PaginationBaseURL }}?page={{ $prev }}"
       hx-target="{{ .PaginationTarget }}"
-      hx-swap="innerHTML"
+      hx-swap="outerHTML"
       {{
       if
       eq
@@ -32,7 +34,7 @@
     <button
       hx-get="{{ $.PaginationBaseURL }}?page={{ $i }}"
       hx-target="{{ $.PaginationTarget }}"
-      hx-swap="innerHTML"
+      hx-swap="outerHTML"
       class="relative hidden items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus:z-20 focus:outline-offset-0 md:inline-flex
       {{ if eq $i $page }}bg-indigo-600 text-white
       {{ else }}hover:bg-gray-200 text-black
@@ -47,7 +49,7 @@
     <button
       hx-get="{{ .PaginationBaseURL }}?page={{ $next }}"
       hx-target="{{ .PaginationTarget }}"
-      hx-swap="innerHTML"
+      hx-swap="outerHTML"
       {{
       if
       not

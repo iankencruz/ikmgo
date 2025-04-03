@@ -1,6 +1,12 @@
 {{ define "admin_media_grid" }}
 
-<div id="sortableGrid" class="" data-gallery="{{ .Gallery.ID }}">
+<!-- prettier-ignore -->
+<div 
+  id="sortableGrid" 
+  class="" 
+  {{ if .Gallery }}data-gallery="{{ .Gallery.ID }}"{{ end }}
+  {{ if .Project }}data-project="{{ .Project.ID }}"{{ end }}
+>
   <div class="sortable grid grid-cols-3 gap-4 mt-4">
     {{ range .Media }}
     <div

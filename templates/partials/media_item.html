@@ -1,9 +1,13 @@
 {{ define "partials/media_item.html" }}
 
+<!-- prettier-ignore -->
 <div
   class="sortable-item border border-gray-300 p-2 rounded shadow-lg"
   data-id="{{ .ID }}"
-  data-gallery="{{ .GalleryID }}"
+  {{ with .Gallery }}
+    data-gallery="{{ .ID }}"
+  {{ end }}
+
 >
   <img
     src="{{ .Media.ThumbnailURL }}"
@@ -19,11 +23,15 @@
     class="mt-2 text-center"
   >
     <input type="hidden" name="media_id" value="{{ .ID }}" />
-    {{ if $.GalleryID }}
-    <input type="hidden" name="gallery_id" value="{{ $.GalleryID }}" />
-    {{ end }} {{ if $.ProjectID }}
-    <input type="hidden" name="project_id" value="{{ $.ProjectID }}" />
+
+    {{ if $.Gallery }}
+    <input type="hidden" name="gallery_id" value="{{ $.Gallery.ID }}" />
     {{ end }}
+    <!-- -->
+    {{ if $.Project }}
+    <input type="hidden" name="project_id" value="{{ $.Project.ID }}" />
+    {{ end }}
+
     <button type="submit" class="text-red-500">Unlink</button>
   </form>
 </div>

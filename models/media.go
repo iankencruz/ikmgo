@@ -294,9 +294,9 @@ func (m *MediaModel) AttachToProject(projectID, mediaID, position int) error {
 	return err
 }
 
-func (m *MediaModel) GetUnlinkedMedia(joinTable, foreignKey string, id int) ([]Media, error) {
+func (m *MediaModel) GetUnlinkedMedia(joinTable, foreignKey string, id int) ([]*Media, error) {
 	query := fmt.Sprintf(`
-		SELECT id, file_name, full_url, thumbnail_url, COALESCE(mime_type, '') AS mime_type, COALESCE(embed_url, '') AS embed_url
+		SELECT id, file_name, full_url, thumbnail_url, COALESCE(mime_type, ''), COALESCE(embed_url, '')
 		FROM media
 		WHERE id NOT IN (
 			SELECT media_id FROM %s WHERE %s = $1
@@ -304,21 +304,37 @@ func (m *MediaModel) GetUnlinkedMedia(joinTable, foreignKey string, id int) ([]M
 		ORDER BY id DESC
 	`, joinTable, foreignKey)
 
+	log.Printf("🕵️ GetUnlinkedMedia: Running query for %s.%s = %d", joinTable, foreignKey, id)
+
 	rows, err := m.DB.Query(context.Background(), query, id)
 	if err != nil {
+		log.Printf("❌ Query failed in GetUnlinkedMedia: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	var media []Media
+	var media []*Media
 	for rows.Next() {
 		var m Media
-		err := rows.Scan(&m.ID, &m.FileName, &m.FullURL, &m.ThumbnailURL, &m.MimeType, &m.EmbedURL)
-		if err != nil {
-			return nil, err
+		var mime, embed string
+
+		if err := rows.Scan(&m.ID, &m.FileName, &m.FullURL, &m.ThumbnailURL, &mime, &embed); err != nil {
+			log.Printf("❌ Scan failed for media row: %v", err)
+			continue
 		}
-		media = append(media, m)
+
+		if mime != "" {
+			m.MimeType = &mime
+		}
+		if embed != "" {
+			m.EmbedURL = &embed
+		}
+
+		log.Printf("✅ Unlinked Media Found: ID=%d Name=%s", m.ID, m.FileName)
+		media = append(media, &m)
 	}
+
+	log.Printf("📦 Total unlinked media found: %d", len(media))
 	return media, nil
 }
 

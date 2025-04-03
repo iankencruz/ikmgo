@@ -399,6 +399,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 }
 
 // Update Gallery Title
+
 func (app *Application) UpdateGallery(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	title := r.FormValue("title")
@@ -409,7 +410,16 @@ func (app *Application) UpdateGallery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, r.Header.Get("Referer"), 302)
+	// Get updated gallery to pass to partial
+	gallery, err := app.GalleryModel.GetByID(id)
+	if err != nil {
+		http.Error(w, "Error fetching updated gallery", http.StatusInternalServerError)
+		return
+	}
+
+	app.renderPartialHTMX(w, "partials/gallery_info_static.html", map[string]interface{}{
+		"Gallery": gallery,
+	})
 }
 
 // Create a New Gallery (POST)
@@ -1359,16 +1369,18 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 	projectIDStr := r.URL.Query().Get("project_id")
 	galleryIDStr := r.URL.Query().Get("gallery_id")
 
-	// 💡 Case 1: Project context
 	if projectIDStr != "" {
 		projectID, _ := strconv.Atoi(projectIDStr)
+		log.Printf("🧩 UploadMediaModal called with project_id: %d", projectID)
 
 		existingMedia, err := app.MediaModel.GetUnlinkedMedia("project_media", "project_id", projectID)
 		if err != nil {
-			log.Printf("❌ Failed to load unlinked project media for project %d: %v", projectID, err)
+			log.Printf("❌ Failed to load unlinked media for project %d: %v", projectID, err)
 			http.Error(w, "Error loading media", http.StatusInternalServerError)
 			return
 		}
+
+		log.Printf("📦 Passing %d unlinked media to project modal", len(existingMedia))
 
 		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]interface{}{
 			"ProjectID":     projectID,
@@ -1378,17 +1390,18 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// 💡 Case 2: Gallery context
 	if galleryIDStr != "" {
 		galleryID, _ := strconv.Atoi(galleryIDStr)
+		log.Printf("🧩 UploadMediaModal called with gallery_id: %d", galleryID)
 
 		existingMedia, err := app.MediaModel.GetUnlinkedMedia("gallery_media", "gallery_id", galleryID)
 		if err != nil {
+			log.Printf("❌ Failed to load unlinked media for gallery %d: %v", galleryID, err)
 			http.Error(w, "Error loading media", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("💡 galleryID: %d", galleryID)
+		log.Printf("📦 Passing %d unlinked media to gallery modal", len(existingMedia))
 
 		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
 			"GalleryID":     galleryID,
@@ -1398,7 +1411,8 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// 💡 Case 3: Standalone / unlinked media (admin/media page)
+	log.Printf("🧩 UploadMediaModal called with no context (standalone)")
+
 	app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
 		"ExistingMedia": nil,
 		"Context":       "standalone",
@@ -1592,5 +1606,21 @@ func (app *Application) Toast(w http.ResponseWriter, r *http.Request) {
 		"Subtitle": subtitle,
 		"Variant":  variant,
 		"Timeout":  5000,
+	})
+}
+
+func (app *Application) AdminGalleryInfoView(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	gallery, _ := app.GalleryModel.GetByID(id)
+	app.renderPartialHTMX(w, "partials/gallery_info_static.html", map[string]interface{}{
+		"Gallery": gallery,
+	})
+}
+
+func (app *Application) AdminGalleryInfoEdit(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	gallery, _ := app.GalleryModel.GetByID(id)
+	app.renderPartialHTMX(w, "partials/gallery_info_form.html", map[string]interface{}{
+		"Gallery": gallery,
 	})
 }

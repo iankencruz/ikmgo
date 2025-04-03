@@ -53,13 +53,15 @@ func (app *Application) routes() http.Handler {
 		r.Get("/gallery/create", app.CreateGalleryForm)
 		r.Post("/gallery/create", app.CreateGallery)
 		r.Delete("/gallery/{id}", app.DeleteGallery)
-		r.Post("/gallery/feature/{id}", app.SetFeaturedGallery) // Set Featured Galleryrou
+		r.Post("/gallery/feature/{id}", app.SetFeaturedGallery)
 		r.Get("/gallery/{id}", app.EditGalleryForm)
 		r.Get("/gallery/edit/{id}", app.EditGalleryForm)
 		r.Post("/gallery/update/{id}", app.UpdateGallery)
-
 		r.Post("/gallery/{galleryID}/cover", app.SetCoverImage)
 		r.Post("/gallery/{id}/publish", app.SetGalleryVisibility)
+		// HTMX: Gallery Info Edit View
+		r.Get("/gallery/info/{id}", app.AdminGalleryInfoView)
+		r.Get("/gallery/info/edit/{id}", app.AdminGalleryInfoEdit)
 
 		// Projects
 		r.Get("/projects", app.AdminProjects)           // list view

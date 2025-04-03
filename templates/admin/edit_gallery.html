@@ -1,6 +1,4 @@
 {{ define "content" }}
-<h1 class="text-2xl font-bold mb-6">Edit Gallery: {{ .Gallery.Title }}</h1>
-
 <!-- Desktop Tabs -->
 <div class="hidden sm:block">
   <div class="border-b border-gray-200">
@@ -24,25 +22,13 @@
 <div id="tab-content">
   <!-- Gallery Info Tab -->
   <div id="info" class="tab-pane block mt-6">
-    <form
-      hx-post="/admin/gallery/{{ .Gallery.ID }}/update"
-      hx-target="body"
-      hx-swap="outerHTML"
-      class="space-y-4"
+    <div
+      id="gallery-info"
+      hx-get="/admin/gallery/info/{{ .Item.ID }}"
+      hx-trigger="load"
     >
-      <div>
-        <label class="block font-medium text-gray-700">Gallery Title</label>
-        <input
-          type="text"
-          name="title"
-          value="{{ .Item.Title }}"
-          class="border rounded w-full p-2"
-        />
-      </div>
-      <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
-        Save Changes
-      </button>
-    </form>
+      <!-- HTMX will load static view here -->
+    </div>
   </div>
 
   <!-- Cover Image Tab -->
@@ -88,8 +74,9 @@
 <div class="flex flex-col lg:flex-row py-4 justify-between items-center">
   <h2 class="text-xl font-semibold">Upload Media</h2>
   <!-- prettier-ignore-->
+  {{ $id := .Item.ID }}
   {{ template "partials/upload_media_button.html" (dict 
-  "ModalURL" (printf "/admin/media/upload-modal?gallery_id=%d" .Gallery.ID) 
+  "ModalURL" (printf "/admin/media/upload-modal?gallery_id=%d" $id) 
   "Label" "Upload Gallery Media" 
   )}}
 </div>

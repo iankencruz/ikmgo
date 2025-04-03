@@ -1,0 +1,32 @@
+{{ define "partials/gallery_info_form.html" }}
+<form
+  hx-post="/admin/gallery/update/{{ .Gallery.ID }}"
+  hx-target="#gallery-info"
+  hx-swap="innerHTML"
+  class="space-y-4"
+>
+  <div>
+    <label class="block font-medium text-gray-700">Gallery Title</label>
+    <input
+      type="text"
+      name="title"
+      value="{{ .Gallery.Title }}"
+      class="border rounded w-full p-2"
+    />
+  </div>
+  <div class="flex gap-2">
+    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
+      Save
+    </button>
+    <button
+      type="button"
+      class="px-4 py-2 border border-gray-300 rounded"
+      hx-get="/admin/gallery/info/{{ .Gallery.ID }}"
+      hx-target="#gallery-info"
+      hx-swap="innerHTML"
+    >
+      Cancel
+    </button>
+  </div>
+</form>
+{{ end }}

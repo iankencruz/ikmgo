@@ -1,129 +1,103 @@
 {{ define "partials/upload_media_modal.html" }}
-<div class="flex justify-between items-center mb-4">
-  <h2 class="text-lg font-semibold text-gray-800">Upload Media</h2>
-  <button
-    onclick="closeModal()"
-    class="text-gray-500 hover:text-gray-700 text-xl"
+<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+  <div
+    id="mediaModalContent"
+    class="bg-white rounded-lg shadow-lg p-6 max-w-4xl w-full mx-4"
   >
-    ✕
-  </button>
-</div>
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-semibold text-gray-800">Upload Media</h2>
+      <button
+        onclick="closeModal()"
+        class="text-gray-500 hover:text-gray-700 text-xl"
+      >
+        ✕
+      </button>
+    </div>
 
-<!-- Tabs -->
-<div class="flex space-x-4 mb-4">
-  <button onclick="switchUploadTab('upload')" class="upload-tab-btn active">
-    Upload New
-  </button>
-  <button onclick="switchUploadTab('existing')" class="upload-tab-btn">
-    Link Existing
-  </button>
-</div>
+    <!-- Tabs -->
+    <div class="flex space-x-4 mb-4">
+      <button onclick="switchUploadTab('upload')" class="upload-tab-btn active">
+        Upload New
+      </button>
+      <button onclick="switchUploadTab('existing')" class="upload-tab-btn">
+        Link Existing
+      </button>
+    </div>
 
-<!-- Upload New Section -->
-<div id="upload-tab-upload" class="upload-tab-section block">
-  <form
-    enctype="multipart/form-data"
-    hx-post="/admin/media/upload"
-    hx-encoding="multipart/form-data"
-    hx-on:afterRequest="this.closest('div').remove()"
-    hx-target="#sortableGrid"
-    hx-swap="beforeend"
-  >
-    {{ if .ProjectID }}
-    <input type="hidden" name="project_id" value="{{ .ProjectID }}" />
-    {{ else if .GalleryID }}
-    <input type="hidden" name="gallery_id" value="{{ .GalleryID }}" />
-    {{ end }}
-
-    <input
-      type="file"
-      name="files"
-      multiple
-      required
-      class="w-full border border-gray-300 p-2 rounded mb-4"
-    />
-
-    <button
-      type="submit"
-      class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-    >
-      Upload
-    </button>
-  </form>
-</div>
-
-<!-- Link Existing Media -->
-<div id="upload-tab-existing" class="upload-tab-section hidden">
-  <h3 class="text-sm font-semibold text-gray-700 mb-2">
-    Select from existing media
-  </h3>
-  <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-    {{ if .ExistingMedia }} {{ range .ExistingMedia }}
-    <div id="media-{{ .ID }}">
+    <!-- Upload New Section -->
+    <div id="upload-tab-upload" class="upload-tab-section block">
       <form
-        hx-post="/admin/media/attach"
+        enctype="multipart/form-data"
+        hx-post="/admin/media/upload"
+        hx-encoding="multipart/form-data"
+        hx-on:afterRequest="closeModal()"
         hx-target="#sortableGrid"
         hx-swap="beforeend"
-        hx-on:afterRequest="document.getElementById('media-{{ .ID }}')?.remove()"
       >
-        <input type="hidden" name="media_id" value="{{ .ID }}" />
-        {{ if $.GalleryID }}
-        <input type="hidden" name="gallery_id" value="{{ $.GalleryID }}" />
+        {{ if .ProjectID }}
+        <input type="hidden" name="project_id" value="{{ .ProjectID }}" />
+        {{ else if .GalleryID }}
+        <input type="hidden" name="gallery_id" value="{{ .GalleryID }}" />
         {{ end }}
-        <!---->
-        {{ if $.ProjectID }}
-        <input type="hidden" name="project_id" value="{{ $.ProjectID }}" />
-        {{ end }}
+
+        <input
+          type="file"
+          name="files"
+          multiple
+          required
+          class="w-full border border-gray-300 p-2 rounded mb-4"
+        />
 
         <button
           type="submit"
-          class="aspect-square overflow-hidden rounded-lg border hover:ring-2 hover:ring-indigo-500 w-full h-full"
+          class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
-          <img
-            src="{{ .ThumbnailURL }}"
-            class="w-full h-full object-cover"
-            alt="Media Preview"
-          />
+          Upload
         </button>
       </form>
     </div>
-    {{ end }}
-    <!-- -->
-    {{ else }}
-    <p class="text-gray-400 text-sm col-span-full">
-      No unlinked media available.
-    </p>
-    {{ end }}
+
+    <!-- Link Existing Media Section -->
+    <div id="upload-tab-existing" class="upload-tab-section hidden">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">
+        Select from existing media
+      </h3>
+      <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+        {{ if .ExistingMedia }} {{ range .ExistingMedia }}
+        <div id="media-{{ .ID }}">
+          <form
+            hx-post="/admin/media/attach"
+            hx-target="#sortableGrid"
+            hx-swap="beforeend"
+            hx-on:afterRequest="document.getElementById('media-{{ .ID }}')?.remove()"
+          >
+            <input type="hidden" name="media_id" value="{{ .ID }}" />
+            {{ if $.GalleryID }}
+            <input type="hidden" name="gallery_id" value="{{ $.GalleryID }}" />
+            {{ end }} {{ if $.ProjectID }}
+            <input type="hidden" name="project_id" value="{{ $.ProjectID }}" />
+            {{ end }}
+
+            <button
+              type="submit"
+              class="aspect-square overflow-hidden rounded-lg border hover:ring-2 hover:ring-indigo-500 w-full h-full"
+            >
+              <img
+                src="{{ .ThumbnailURL }}"
+                class="w-full h-full object-cover"
+                alt="Media Preview"
+              />
+            </button>
+          </form>
+        </div>
+        {{ end }} {{ else }}
+        <p class="text-gray-400 text-sm col-span-full">
+          No unlinked media available.
+        </p>
+        {{ end }}
+      </div>
+    </div>
   </div>
 </div>
-
-<script>
-  function switchUploadTab(tab) {
-    document
-      .querySelectorAll(".upload-tab-section")
-      .forEach((el) => el.classList.add("hidden"));
-    document
-      .querySelectorAll(".upload-tab-btn")
-      .forEach((el) => el.classList.remove("active"));
-    document.getElementById(`upload-tab-${tab}`).classList.remove("hidden");
-    event.target.classList.add("active");
-  }
-
-  document.addEventListener("htmx:afterOnLoad", function (evt) {
-    const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger");
-    if (trigger && trigger.startsWith("media-attached-")) {
-      const mediaID = trigger.replace("media-attached-", "");
-      const el = document.getElementById(`media-${mediaID}`);
-      if (el) el.remove();
-    }
-
-    // Optional: auto-close modal when all media is used
-    const buttonsLeft = document.querySelectorAll(
-      "#upload-tab-existing button",
-    );
-    if (buttonsLeft.length === 0) {
-      document.getElementById("mediaModal")?.classList.add("hidden");
-    }
-  });
-</script>
 {{ end }}

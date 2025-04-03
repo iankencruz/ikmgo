@@ -77,8 +77,9 @@
 <div class="flex flex-col lg:flex-row py-4 justify-between items-center">
   <h2 class="text-xl font-semibold">Upload Media</h2>
   <!-- prettier-ignore -->
+  {{ $id := .Item.ID }}
   {{ template "partials/upload_media_button.html" (dict
-  "ModalURL" (printf "/admin/media/upload-modal?project_id=%d" .Project.ID)
+  "ModalURL" (printf "/admin/media/upload-modal?project_id=%d" $id)
   "Label" "Upload Project Media"
   )}}
 </div>

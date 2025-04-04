@@ -1,51 +1,36 @@
 function initSortableGrid() {
-  requestAnimationFrame(() => {
-    const outer = document.getElementById("sortableGrid");
-    const grid = outer?.querySelector(".sortable");
-    if (!grid) {
-      console.warn("❌ sortable inner grid not found");
-      return;
-    }
+  const grid = document.querySelector("#sortableGrid .sortable");
+  if (!grid) return;
 
-    // Destroy existing instance if needed
-    if (grid._sortableInstance) {
-      grid._sortableInstance.destroy();
-    }
+  if (grid._sortableInstance) {
+    grid._sortableInstance.destroy();
+  }
 
-    console.log("✅ Initializing sortable on", grid);
+  grid._sortableInstance = Sortable.create(grid, {
+    animation: 150,
+    handle: ".sortable-item",
+    draggable: ".sortable-item",
+    onEnd: function (evt) {
+      const ids = [...grid.querySelectorAll(".sortable-item")].map((el) =>
+        Number(el.dataset.id),
+      );
 
-    grid._sortableInstance = Sortable.create(grid, {
-      animation: 150,
-      handle: ".sortable-item",
-      draggable: ".sortable-item",
-      onEnd: function (evt) {
-        const ids = [...grid.querySelectorAll(".sortable-item")].map((el) =>
-          Number(el.dataset.id),
-        );
+      const galleryID = grid.closest("#sortableGrid")?.dataset.gallery;
+      const projectID = grid.closest("#sortableGrid")?.dataset.project;
 
-        const payload = {
-          order: ids,
-        };
+      const payload = { order: ids };
+      if (galleryID) payload.gallery_id = Number(galleryID);
+      if (projectID) payload.project_id = Number(projectID);
 
-        const wrapper = grid.closest("#sortableGrid");
-        const galleryID = wrapper?.dataset.gallery;
-        const projectID = wrapper?.dataset.project;
-
-        if (galleryID) payload.gallery_id = Number(galleryID);
-        if (projectID) payload.project_id = Number(projectID);
-
-        console.log("📦 Sending updated order:", payload);
-
-        fetch("/admin/media/update-order-bulk", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "HX-Request": "true",
-          },
-          body: JSON.stringify(payload),
-        });
-      },
-    });
+      fetch("/admin/media/update-order-bulk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "HX-Request": "true",
+        },
+        body: JSON.stringify(payload),
+      });
+    },
   });
 }
 

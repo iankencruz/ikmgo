@@ -1124,7 +1124,7 @@ func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch media
-	media, err := app.GalleryModel.GetMediaPaginated(galleryID, 5, 0)
+	media, err := app.GalleryModel.GetMediaPaginated(galleryID, 25, 0)
 	if err != nil {
 		log.Printf("❌ Error fetching media: %v", err)
 		http.Error(w, "Error retrieving media", http.StatusInternalServerError)
@@ -1260,29 +1260,30 @@ func (app *Application) UpdateProjectMediaOrder(w http.ResponseWriter, r *http.R
 }
 
 // Sort Media
+
 func (app *Application) UpdateMediaOrderBulk(w http.ResponseWriter, r *http.Request) {
-
-	body, _ := io.ReadAll(r.Body)
-
 	var payload struct {
 		Order     []int `json:"order"`
-		GalleryID int   `json:"gallery_id"`
+		GalleryID int   `json:"gallery_id,omitempty"`
+		ProjectID int   `json:"project_id,omitempty"`
 	}
 
-	err := json.Unmarshal(body, &payload)
+	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
-		log.Printf("❌ Unmarshal error: %v", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	err = app.MediaModel.UpdatePositionsInBulk(payload.GalleryID, payload.Order)
+	if payload.GalleryID != 0 {
+		err = app.MediaModel.UpdatePositionsForGallery(payload.GalleryID, payload.Order)
+	} else if payload.ProjectID != 0 {
+		err = app.MediaModel.UpdatePositionsForProject(payload.ProjectID, payload.Order)
+	}
+
 	if err != nil {
-		log.Printf("❌ Failed to bulk update media positions: %v", err)
 		http.Error(w, "Failed to update positions", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("🧩 Updating gallery %d order to: %+v", payload.GalleryID, payload.Order)
 
 	w.WriteHeader(http.StatusOK)
 }

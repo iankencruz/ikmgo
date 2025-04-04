@@ -247,6 +247,27 @@ func (m *MediaModel) UpdatePositionsForProject(projectID int, mediaIDs []int) er
 	return tx.Commit(ctx)
 }
 
+func (m *MediaModel) UpdatePositionsForGallery(galleryID int, mediaIDs []int) error {
+	tx, err := m.DB.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	for i, mediaID := range mediaIDs {
+		_, err := tx.Exec(context.Background(), `
+			UPDATE gallery_media
+			SET position = $1
+			WHERE gallery_id = $2 AND media_id = $3
+		`, i, galleryID, mediaID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(context.Background())
+}
+
 func (m *MediaModel) UpdatePositionsInBulk(galleryID int, mediaIDs []int) error {
 	ctx := context.Background()
 	tx, err := m.DB.Begin(ctx)

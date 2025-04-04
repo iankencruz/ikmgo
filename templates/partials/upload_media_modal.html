@@ -1,5 +1,8 @@
 {{ define "partials/upload_media_modal.html" }}
-<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+
+<div
+  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center visible opacity-100"
+>
   <div
     id="mediaModalContent"
     class="bg-white rounded-lg shadow-lg p-6 max-w-4xl w-full mx-4"
@@ -31,7 +34,7 @@
         enctype="multipart/form-data"
         hx-post="/admin/media/upload"
         hx-encoding="multipart/form-data"
-        hx-on:afterRequest="closeModal()"
+        hx-on:afterSwap="closeModal()"
         hx-target="#sortableGrid"
         hx-swap="beforeend"
       >

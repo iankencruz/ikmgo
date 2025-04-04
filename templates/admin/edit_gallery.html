@@ -104,7 +104,7 @@
         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
           {{ range .Media }}
           <button
-            hx-post="/admin/gallery/{{ $.Gallery.ID }}/cover"
+            hx-post="/admin/gallery/{{ $.Item.ID }}/cover"
             hx-vals='{"media_id": "{{ .ID }}"}'
             hx-target="#cover-preview"
             hx-swap="innerHTML"

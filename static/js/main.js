@@ -1,4 +1,54 @@
-// ==========================
+function initSortableGrid() {
+  requestAnimationFrame(() => {
+    const outer = document.getElementById("sortableGrid");
+    const grid = outer?.querySelector(".sortable");
+    if (!grid) {
+      console.warn("❌ sortable inner grid not found");
+      return;
+    }
+
+    // Destroy existing instance if needed
+    if (grid._sortableInstance) {
+      grid._sortableInstance.destroy();
+    }
+
+    console.log("✅ Initializing sortable on", grid);
+
+    grid._sortableInstance = Sortable.create(grid, {
+      animation: 150,
+      handle: ".sortable-item",
+      draggable: ".sortable-item",
+      onEnd: function (evt) {
+        const ids = [...grid.querySelectorAll(".sortable-item")].map((el) =>
+          Number(el.dataset.id),
+        );
+
+        const payload = {
+          order: ids,
+        };
+
+        const wrapper = grid.closest("#sortableGrid");
+        const galleryID = wrapper?.dataset.gallery;
+        const projectID = wrapper?.dataset.project;
+
+        if (galleryID) payload.gallery_id = Number(galleryID);
+        if (projectID) payload.project_id = Number(projectID);
+
+        console.log("📦 Sending updated order:", payload);
+
+        fetch("/admin/media/update-order-bulk", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "HX-Request": "true",
+          },
+          body: JSON.stringify(payload),
+        });
+      },
+    });
+  });
+}
+
 // 🧭 Sidebar Mobile Handling
 // ==========================
 function openSidebar() {
@@ -84,6 +134,12 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
     document.getElementById(`media-${mediaID}`)?.remove();
   }
 
+  const isExistingTabActive = document
+    .getElementById("upload-tab-existing")
+    ?.classList.contains("block");
+
+  if (!isExistingTabActive) return;
+
   const buttonsLeft = document.querySelectorAll("#upload-tab-existing button");
   if (buttonsLeft.length === 0) {
     window.closeModal();
@@ -129,4 +185,12 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
         setTimeout(() => el.remove(), fadeDuration);
       }, displayTime);
     });
+});
+
+document.addEventListener("htmx:afterSwap", function (event) {
+  console.log("🔥 htmx:afterSwap fired for:", event.target.id);
+  if (event.target.id === "sortableGrid") {
+    console.log("🎯 Reinitializing sortable");
+    initSortableGrid();
+  }
 });

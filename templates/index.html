@@ -7,7 +7,7 @@
 
 <div class="max-w-7xl mx-auto">
   <!-- Gallery Grid -->
-  {{ template "gallery_component" . }}
+  {{ template "media_grid" (dict "Media" .Media ) }}
 </div>
 
 {{ else }}

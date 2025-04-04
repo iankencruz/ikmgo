@@ -8,18 +8,23 @@
   {{ end }} {{ range .Media }}
   <div
     class="relative aspect-square hover:bg-black/50 flex border border-gray-400"
+    data-id="{{ .ID }}"
+    {{
+    if
+    $.GalleryID
+    }}data-gallery="{{ $.GalleryID }}"
+    {{
+    end
+    }}
+    {{
+    if
+    $.ProjectID
+    }}data-project="{{ $.ProjectID }}"
+    {{
+    end
+    }}
   >
-    {{ if .EmbedURL }}
-    <!-- 🔗 Embedded Video (e.g. Vimeo/YouTube) -->
-    <iframe
-      src="{{ .EmbedURL }}"
-      class="absolute inset-0 w-full h-full"
-      frameborder="0"
-      allow="autoplay; fullscreen; picture-in-picture"
-      allowfullscreen
-    ></iframe>
-
-    {{ else if hasPrefix .MimeType "video/" }}
+    {{ if and .MimeType (hasPrefix .MimeType "video/") }}
     <!-- 🎥 Self-hosted Video -->
     <video
       class="absolute inset-0 w-full h-full object-cover"
@@ -30,6 +35,15 @@
       <source src="{{ .FullURL }}" type="{{ .MimeType }}" />
       Your browser does not support the video tag.
     </video>
+    {{ else if .EmbedURL }}
+    <!-- 🔗 Embedded Video (e.g. Vimeo/YouTube) -->
+    <iframe
+      src="{{ .EmbedURL }}"
+      class="absolute inset-0 w-full h-full"
+      frameborder="0"
+      allow="autoplay; fullscreen; picture-in-picture"
+      allowfullscreen
+    ></iframe>
 
     {{ else }}
     <!-- 🖼️ Image -->

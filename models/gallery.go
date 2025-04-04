@@ -36,11 +36,15 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 		return nil, nil, err
 	}
 
-	// Fetch associated images sorted by position in ASCENDING order
+	// Fetch associated images with mime_type safely set
 	rows, err := g.DB.Query(context.Background(),
-		`SELECT id, m.file_name, m.thumbnail_url,  m.full_url, gm.position FROM media m 
+		`SELECT m.id, m.file_name, m.thumbnail_url, m.full_url,
+		        COALESCE(m.mime_type, '') AS mime_type,
+		        gm.position
+		 FROM media m 
 		 JOIN gallery_media gm ON m.id = gm.media_id
-		 WHERE gm.gallery_id = $1 ORDER BY gm.position ASC`, gallery.ID)
+		 WHERE gm.gallery_id = $1
+		 ORDER BY gm.position ASC`, gallery.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -49,7 +53,14 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 	var images []*Media
 	for rows.Next() {
 		var media Media
-		err := rows.Scan(&media.ID, &media.FileName, &media.ThumbnailURL, &media.FullURL, &media.Position)
+		err := rows.Scan(
+			&media.ID,
+			&media.FileName,
+			&media.ThumbnailURL,
+			&media.FullURL,
+			&media.MimeType, // now safe
+			&media.Position,
+		)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -250,7 +261,9 @@ func (g *GalleryModel) SetPublished(id int, published bool) error {
 
 func (g *GalleryModel) GetMediaPaginated(galleryID, limit, offset int) ([]*Media, error) {
 	rows, err := g.DB.Query(context.Background(), `
-		SELECT m.id, m.file_name, m.thumbnail_url, m.full_url, gm.position
+		SELECT m.id, m.file_name, m.thumbnail_url, m.full_url,
+			   COALESCE(m.mime_type, '') AS mime_type,
+			   gm.position
 		FROM gallery_media gm
 		JOIN media m ON gm.media_id = m.id
 		WHERE gm.gallery_id = $1
@@ -265,7 +278,7 @@ func (g *GalleryModel) GetMediaPaginated(galleryID, limit, offset int) ([]*Media
 	var media []*Media
 	for rows.Next() {
 		var m Media
-		if err := rows.Scan(&m.ID, &m.FileName, &m.ThumbnailURL, &m.FullURL, &m.Position); err != nil {
+		if err := rows.Scan(&m.ID, &m.FileName, &m.ThumbnailURL, &m.FullURL, &m.MimeType, &m.Position); err != nil {
 			return nil, err
 		}
 		media = append(media, &m)

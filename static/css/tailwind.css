@@ -240,6 +240,9 @@
   .pointer-events-none {
     pointer-events: none;
   }
+  .visible {
+    visibility: visible;
+  }
   .sr-only {
     position: absolute;
     width: 1px;
@@ -433,6 +436,9 @@
   }
   .ml-16 {
     margin-left: calc(var(--spacing) * 16);
+  }
+  .\!grid {
+    display: grid !important;
   }
   .block {
     display: block;

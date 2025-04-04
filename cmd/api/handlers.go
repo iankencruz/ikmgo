@@ -25,20 +25,22 @@ import (
 )
 
 // Home Page Handler
-func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 
-	gallery, media, err := app.GalleryModel.GetByTitle("Japan")
+func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
+	gallery, media, err := app.GalleryModel.GetByTitle("Home")
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("❌ Error fetching featured gallery: %v", err)
 	}
 
-	app.render(w, r, "index.html", map[string]interface{}{
+	data := map[string]interface{}{
 		"Title":      "Home",
 		"Gallery":    gallery,
 		"Media":      media,
 		"ActiveLink": "home",
-	})
+	}
+
+	app.render(w, r, "index.html", data)
 }
 
 // Register Handler (GET + POST)
@@ -261,7 +263,7 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	media, err := app.ProjectModel.GetMediaPaginated(projectID, 5, 0)
+	media, err := app.ProjectModel.GetMediaPaginated(projectID, 100, 0)
 	if err != nil {
 		log.Printf("❌ Failed to get media for project %d: %v", projectID, err)
 		http.Error(w, "Unable to load media", http.StatusInternalServerError)
@@ -283,6 +285,7 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 	data := map[string]interface{}{
 		"Title":     project.Title,
 		"Project":   project,
+		"ProjectID": projectID,
 		"HeroMedia": heroMedia,
 		"Media":     restMedia, // remaining media
 	}
@@ -379,7 +382,8 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 		"Title":             "Edit Gallery",
 		"Media":             media,
 		"MediaCount":        gallery.MediaCount,
-		"Item":              gallery,
+		"GalleryID":         id,
+		"Gallery":           gallery,
 		"Page":              page,
 		"Limit":             limit,
 		"TotalPages":        totalPages,
@@ -622,9 +626,11 @@ func (app *Application) SetProjectCoverImage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	app.render(w, r, "partials/cover_preview.html", map[string]interface{}{
+	thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/Uploads/" + media.FileName
+
+	app.renderPartialHTMX(w, "partials/cover_preview.html", map[string]interface{}{
 		"ProjectID":     projectID,
-		"CoverImageURL": media.ThumbnailURL,
+		"CoverImageURL": thumbURL,
 	})
 }
 
@@ -1201,7 +1207,7 @@ func (app *Application) SetCoverImage(w http.ResponseWriter, r *http.Request) {
 	thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/Uploads/" + media.FileName
 
 	// ✅ Render the updated preview container
-	app.render(w, r, "partials/cover_preview.html", map[string]interface{}{
+	app.renderPartialHTMX(w, "partials/cover_preview.html", map[string]interface{}{
 		"GalleryID":     galleryID,
 		"CoverImageURL": thumbURL,
 	})
@@ -1276,6 +1282,7 @@ func (app *Application) UpdateMediaOrderBulk(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Failed to update positions", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("🧩 Updating gallery %d order to: %+v", payload.GalleryID, payload.Order)
 
 	w.WriteHeader(http.StatusOK)
 }

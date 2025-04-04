@@ -3,10 +3,10 @@
   {{ range .Media }}
   <div class="relative aspect-square hover:bg-black/50 flex">
     <img
-      src="{{ .ThumbnailURL }}"
-      data-full="{{ .FullURL }}"
+      src="{{ .Media.ThumbnailURL }}"
+      data-full="{{ .Media.FullURL }}"
       data-gallery="{{ .GalleryID }}"
-      alt="{{ .FileName }}"
+      alt="{{ .Media.FileName }}"
       class="absolute inset-0 w-full h-full object-cover cursor-pointer"
       loading="lazy"
     />

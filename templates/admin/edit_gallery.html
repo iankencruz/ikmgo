@@ -24,7 +24,7 @@
   <div id="info" class="tab-pane block mt-6">
     <div
       id="gallery-info"
-      hx-get="/admin/gallery/info/{{ .Item.ID }}"
+      hx-get="/admin/gallery/info/{{ .Gallery.ID }}"
       hx-trigger="load"
     >
       <!-- HTMX will load static view here -->
@@ -74,7 +74,7 @@
 <div class="flex flex-col lg:flex-row py-4 justify-between items-center">
   <h2 class="text-xl font-semibold">Upload Media</h2>
   <!-- prettier-ignore-->
-  {{ $id := .Item.ID }}
+  {{ $id := .Gallery.ID }}
   {{ template "partials/upload_media_button.html" (dict 
   "ModalURL" (printf "/admin/media/upload-modal?gallery_id=%d" $id) 
   "Label" "Upload Gallery Media" 
@@ -104,7 +104,7 @@
         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
           {{ range .Media }}
           <button
-            hx-post="/admin/gallery/{{ $.Item.ID }}/cover"
+            hx-post="/admin/gallery/{{ $.Gallery.ID }}/cover"
             hx-vals='{"media_id": "{{ .ID }}"}'
             hx-target="#cover-preview"
             hx-swap="innerHTML"
@@ -130,57 +130,11 @@
 </div>
 
 <!-- Scripts -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+
 <script>
-  function switchToTab(tabName, event = null) {
-    if (event) event.preventDefault();
-    document
-      .querySelectorAll(".tab-pane")
-      .forEach((pane) => pane.classList.add("hidden"));
-    document.getElementById(tabName)?.classList.remove("hidden");
-    document.querySelectorAll(".tab-link").forEach((link) => {
-      link.classList.remove("border-indigo-500", "text-indigo-600");
-      link.classList.add("border-transparent", "text-gray-500");
-    });
-    document.querySelectorAll(`.tab-link`).forEach((link) => {
-      if (link.textContent.trim() === getTabLabel(tabName)) {
-        link.classList.add("border-indigo-500", "text-indigo-600");
-        link.classList.remove("border-transparent", "text-gray-500");
-      }
-    });
-  }
-
-  function getTabLabel(tabValue) {
-    const map = { info: "Gallery Info", cover: "Cover Image" };
-    return map[tabValue] || tabValue;
-  }
-
   document.addEventListener("DOMContentLoaded", () => {
-    switchToTab("info");
-
-    const sortableGrid = document.querySelector(".sortable");
-    new Sortable(sortableGrid, {
-      animation: 150,
-      onEnd: function () {
-        const mediaIDs = Array.from(
-          sortableGrid.querySelectorAll(".sortable-item"),
-        ).map((el) => parseInt(el.dataset.id, 10));
-        const galleryID = parseInt(sortableGrid.dataset.gallery, 10);
-
-        fetch("/admin/media/update-order-bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            gallery_id: galleryID,
-            order: mediaIDs,
-          }),
-        }).then((res) => {
-          if (!res.ok) {
-            console.error("❌ Failed to update media positions");
-          }
-        });
-      },
-    });
+    initSortableGrid();
   });
 </script>
+
 {{ end }}

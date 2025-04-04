@@ -54,6 +54,13 @@ var funcMap = template.FuncMap{
 	"mul": func(a, b int) int {
 		return a * b
 	},
+	"hasSuffix": strings.HasSuffix,
+	"coalesce": func(s *string) string {
+		if s == nil {
+			return ""
+		}
+		return *s
+	},
 }
 
 func LoadTemplates() error {

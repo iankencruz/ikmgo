@@ -71,7 +71,7 @@
         <div id="media-{{ .ID }}">
           <form
             hx-post="/admin/media/attach"
-            hx-target="#sortableGrid"
+            hx-target=".sortable"
             hx-swap="beforeend"
             hx-on:afterRequest="document.getElementById('media-{{ .ID }}')?.remove()"
           >

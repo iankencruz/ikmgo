@@ -8,7 +8,7 @@
     {{ range .Projects }}
     <a
       href="/project/{{ .ID }}"
-      class="group relative block overflow-hidden rounded shadow hover:shadow-lg"
+      class="group relative block overflow-hidden shadow hover:shadow-lg"
     >
       {{ if .CoverImageURL }}
       <img
@@ -23,7 +23,6 @@
         No Cover
       </div>
       {{ end }}
-      <p>{{ .CoverImageURL }}</p>
 
       <div
         class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"

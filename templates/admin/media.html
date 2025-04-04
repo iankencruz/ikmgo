@@ -15,7 +15,50 @@
 
   <div class="mt-6 flow-root">
     <!-- Media Grid (HTMX wrapper) -->
-    {{ template "admin_media_grid" . }}
+    <div
+      id="sortableGrid"
+      class=""
+      {{
+      if
+      .Gallery
+      }}data-gallery="{{ .Gallery.ID }}"
+      {{
+      end
+      }}
+      {{
+      if
+      .Project
+      }}data-project="{{ .Project.ID }}"
+      {{
+      end
+      }}
+    >
+      <div class="sortable grid grid-cols-3 gap-4 mt-4">
+        {{ range .Media }}
+        <div
+          class="sortable-item border border-gray-300 p-2 rounded shadow-lg"
+          data-id="{{ .ID }}"
+        >
+          <img
+            src="{{ .ThumbnailURL }}"
+            class="w-full h-40 object-cover rounded"
+          />
+          <p class="text-center text-sm mt-2 truncate">{{ .FileName }}</p>
+
+          <form
+            hx-post="/admin/media/delete"
+            hx-target="closest .sortable-item"
+            hx-swap="outerHTML"
+            hx-on:afterRequest="this.closest('.sortable-item').remove()"
+          >
+            <input type="hidden" name="media_id" value="{{ .ID }}" />
+            <button class="text-red-500" type="submit">Delete</button>
+          </form>
+        </div>
+        {{ end }}
+      </div>
+      {{ template "pagination" . }}
+    </div>
   </div>
 </div>
 {{ end }}

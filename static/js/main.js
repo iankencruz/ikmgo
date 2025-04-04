@@ -1,50 +1,68 @@
+// ========================
+// 🔄 Sortable Grid Support
+// ========================
 function initSortableGrid() {
-  const grid = document.querySelector("#sortableGrid .sortable");
-  if (!grid) return;
+  requestAnimationFrame(() => {
+    const outer = document.getElementById("sortableGrid");
+    const grid = outer?.querySelector(".sortable");
+    if (!grid) {
+      console.warn("❌ .sortable grid not found inside #sortableGrid");
+      return;
+    }
 
-  if (grid._sortableInstance) {
-    grid._sortableInstance.destroy();
-  }
+    if (grid._sortableInstance) {
+      grid._sortableInstance.destroy();
+    }
 
-  grid._sortableInstance = Sortable.create(grid, {
-    animation: 150,
-    handle: ".sortable-item",
-    draggable: ".sortable-item",
-    onEnd: function (evt) {
-      const ids = [...grid.querySelectorAll(".sortable-item")].map((el) =>
-        Number(el.dataset.id),
-      );
+    grid._sortableInstance = Sortable.create(grid, {
+      animation: 150,
+      handle: ".sortable-item",
+      draggable: ".sortable-item",
 
-      const galleryID = grid.closest("#sortableGrid")?.dataset.gallery;
-      const projectID = grid.closest("#sortableGrid")?.dataset.project;
+      onEnd: function (evt) {
+        const ids = [...grid.querySelectorAll(".sortable-item")].map((el) =>
+          Number(el.dataset.id),
+        );
 
-      const payload = { order: ids };
-      if (galleryID) payload.gallery_id = Number(galleryID);
-      if (projectID) payload.project_id = Number(projectID);
+        const wrapper = grid.closest("#sortableGrid");
+        const galleryID = wrapper?.dataset.gallery;
+        const projectID = wrapper?.dataset.project;
 
-      fetch("/admin/media/update-order-bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "HX-Request": "true",
-        },
-        body: JSON.stringify(payload),
-      });
-    },
+        const payload = { order: ids };
+        if (galleryID) payload.gallery_id = Number(galleryID);
+        if (projectID) payload.project_id = Number(projectID);
+
+        fetch("/admin/media/update-order-bulk", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "HX-Request": "true",
+          },
+          body: JSON.stringify(payload),
+        });
+      },
+    });
   });
 }
 
+// 🔁 Init Sortable after full load + HTMX swaps
+document.addEventListener("DOMContentLoaded", initSortableGrid);
+document.addEventListener("htmx:afterSwap", (event) => {
+  if (document.getElementById("sortableGrid")) initSortableGrid();
+});
+
+// ===========================
 // 🧭 Sidebar Mobile Handling
-// ==========================
+// ===========================
 function openSidebar() {
   const sidebar = document.getElementById("mobileSidebar");
   const backdrop = document.getElementById("mobileBackdrop");
-  const sidebarPanel = sidebar?.querySelector(".fixed.inset-0.flex");
+  const panel = sidebar?.querySelector(".fixed.inset-0.flex");
 
   sidebar?.classList.remove("hidden");
   setTimeout(() => {
-    sidebarPanel?.classList.remove("-translate-x-full");
-    sidebarPanel?.classList.add("translate-x-0");
+    panel?.classList.remove("-translate-x-full");
+    panel?.classList.add("translate-x-0");
     backdrop?.classList.remove("opacity-0", "pointer-events-none");
     backdrop?.classList.add("opacity-100");
   }, 10);
@@ -53,10 +71,10 @@ function openSidebar() {
 function closeSidebar() {
   const sidebar = document.getElementById("mobileSidebar");
   const backdrop = document.getElementById("mobileBackdrop");
-  const sidebarPanel = sidebar?.querySelector(".fixed.inset-0.flex");
+  const panel = sidebar?.querySelector(".fixed.inset-0.flex");
 
-  sidebarPanel?.classList.remove("translate-x-0");
-  sidebarPanel?.classList.add("-translate-x-full");
+  panel?.classList.remove("translate-x-0");
+  panel?.classList.add("-translate-x-full");
   backdrop?.classList.remove("opacity-100");
   backdrop?.classList.add("opacity-0", "pointer-events-none");
 
@@ -112,6 +130,7 @@ window.switchUploadTab = function (tab) {
   }
 };
 
+// 🧼 Clean up modal after linking media
 document.addEventListener("htmx:afterOnLoad", function (evt) {
   const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger");
   if (trigger?.startsWith("media-attached-")) {
@@ -131,6 +150,7 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
   }
 });
 
+// 🍞 Toast trigger handler
 document.addEventListener("htmx:afterOnLoad", function (evt) {
   const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger-After-Settle");
   if (!trigger) return;
@@ -152,18 +172,32 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
   if (!toast) return;
 
   fetch(
-    `/admin/toast?variant=${toast.variant}&heading=${encodeURIComponent(toast.heading)}&subtitle=${encodeURIComponent(toast.subtitle)}`,
+    `/admin/toast?variant=${toast.variant}&heading=${encodeURIComponent(
+      toast.heading,
+    )}&subtitle=${encodeURIComponent(toast.subtitle)}`,
   )
     .then((res) => res.text())
     .then((html) => {
-      document.body.insertAdjacentHTML("beforeend", html);
+      const container = document.getElementById("toastContainer");
+      if (!container) return;
 
-      const el = document.querySelector(".toast-fade");
+      // 💥 Remove any existing toast before adding a new one
+      container.innerHTML = "";
+
+      container.insertAdjacentHTML("beforeend", html);
+
+      const el = container.querySelector(".toast-fade");
       if (!el) return;
+
+      // ✨ Animate in: fade + slide + bounce
+      setTimeout(() => {
+        el.classList.add("opacity-100", "translate-y-0", "scale-100");
+      }, 50); // short delay to allow paint
 
       const fadeDuration = 700;
       const displayTime = parseInt(el.dataset.timeout) || 7000;
 
+      // Fade out after display time
       setTimeout(() => {
         el.classList.remove("opacity-100");
         el.classList.add("opacity-0");
@@ -172,10 +206,32 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
     });
 });
 
-document.addEventListener("htmx:afterSwap", function (event) {
-  console.log("🔥 htmx:afterSwap fired for:", event.target.id);
-  if (event.target.id === "sortableGrid") {
-    console.log("🎯 Reinitializing sortable");
-    initSortableGrid();
-  }
-});
+// =====================
+// 🗂️ Tab Switching
+// =====================
+function switchToTab(tabName, event = null) {
+  if (event) event.preventDefault();
+
+  document
+    .querySelectorAll(".tab-pane")
+    .forEach((pane) => pane.classList.add("hidden"));
+
+  document.getElementById(tabName)?.classList.remove("hidden");
+
+  document.querySelectorAll(".tab-link").forEach((link) => {
+    link.classList.remove("border-indigo-500", "text-indigo-600");
+    link.classList.add("border-transparent", "text-gray-500");
+  });
+
+  document.querySelectorAll(`.tab-link`).forEach((link) => {
+    if (link.textContent.trim() === getTabLabel(tabName)) {
+      link.classList.add("border-indigo-500", "text-indigo-600");
+      link.classList.remove("border-transparent", "text-gray-500");
+    }
+  });
+}
+
+function getTabLabel(tabValue) {
+  const map = { info: "Gallery Info", cover: "Cover Image" };
+  return map[tabValue] || tabValue;
+}

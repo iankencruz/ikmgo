@@ -92,6 +92,7 @@ func (app *Application) routes() http.Handler {
 		r.Post("/media/attach", app.AttachMediaToItem)
 		r.Post("/media/update-order-bulk", app.UpdateMediaOrderBulk)
 		r.Put("/media/unlink", app.UnlinkMediaFromItem)
+		r.Post("/media/delete", app.DeleteMedia)
 
 		// Contacts
 		r.Get("/contacts", app.AdminContacts)

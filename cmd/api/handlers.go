@@ -866,128 +866,6 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	w.Write(outputBuffer.Bytes())
 }
 
-// Upload Project Media (POST)
-
-// func (app *Application) UploadProjectMedia(w http.ResponseWriter, r *http.Request) {
-// 	if err := r.ParseMultipartForm(50 << 20); err != nil {
-// 		http.Error(w, "Error parsing form", http.StatusBadRequest)
-// 		return
-// 	}
-//
-// 	projectID, err := strconv.Atoi(r.FormValue("project_id"))
-// 	if err != nil {
-// 		http.Error(w, "Invalid project ID", http.StatusBadRequest)
-// 		return
-// 	}
-//
-// 	files := r.MultipartForm.File["files"]
-// 	if len(files) == 0 {
-// 		http.Error(w, "No files uploaded", http.StatusBadRequest)
-// 		return
-// 	}
-//
-// 	var outputBuffer bytes.Buffer
-// 	ctx := context.Background()
-//
-// 	for _, fileHeader := range files {
-// 		file, err := fileHeader.Open()
-// 		if err != nil {
-// 			log.Printf("❌ Error opening file: %v", err)
-// 			continue
-// 		}
-// 		defer file.Close()
-//
-// 		base := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), projectID, fileHeader.Filename)
-// 		fileName := base
-// 		thumbName := "thumb_" + base
-// 		mediumName := "medium_" + base
-//
-// 		img, err := imaging.Decode(file, imaging.AutoOrientation(true))
-// 		if err != nil {
-// 			log.Printf("❌ Error decoding image: %v", err)
-// 			continue
-// 		}
-//
-// 		thumbnailImg := imaging.Resize(img, 500, 0, imaging.Lanczos)
-// 		mediumImg := imaging.Resize(img, 1024, 0, imaging.Lanczos)
-// 		file.Seek(0, 0)
-//
-// 		fileKey := "Uploads/" + fileName
-// 		thumbKey := "Uploads/" + thumbName
-// 		mediumKey := "Uploads/" + mediumName
-//
-// 		fileSize := fileHeader.Size
-// 		contentType := fileHeader.Header.Get("Content-Type")
-//
-// 		_, err = app.S3Client.PutObject(ctx, app.S3Bucket, fileKey, io.LimitReader(file, fileSize), fileSize, minio.PutObjectOptions{
-// 			ContentType:  contentType,
-// 			UserMetadata: map[string]string{"x-amz-acl": "public-read"},
-// 		})
-// 		if err != nil {
-// 			log.Printf("❌ Error uploading original: %v", err)
-// 			continue
-// 		}
-//
-// 		var mediumBuf, thumbBuf bytes.Buffer
-//
-// 		if err := imaging.Encode(&mediumBuf, mediumImg, imaging.JPEG); err == nil {
-// 			app.S3Client.PutObject(ctx, app.S3Bucket, mediumKey, bytes.NewReader(mediumBuf.Bytes()), int64(mediumBuf.Len()), minio.PutObjectOptions{
-// 				ContentType:  "image/jpeg",
-// 				UserMetadata: map[string]string{"x-amz-acl": "public-read"},
-// 			})
-// 		}
-//
-// 		if err := imaging.Encode(&thumbBuf, thumbnailImg, imaging.JPEG); err == nil {
-// 			app.S3Client.PutObject(ctx, app.S3Bucket, thumbKey, bytes.NewReader(thumbBuf.Bytes()), int64(thumbBuf.Len()), minio.PutObjectOptions{
-// 				ContentType:  "image/jpeg",
-// 				UserMetadata: map[string]string{"x-amz-acl": "public-read"},
-// 			})
-// 		}
-//
-// 		fullURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + fileKey
-// 		thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/" + thumbKey
-//
-// 		position, err := app.MediaModel.GetNextProjectPosition(projectID)
-// 		if err != nil {
-// 			log.Printf("❌ Failed to get project position: %v", err)
-// 			continue
-// 		}
-//
-// 		mediaID, err := app.MediaModel.InsertProjectMedia(fileName, fullURL, thumbURL, projectID, position)
-// 		if err != nil {
-// 			log.Printf("❌ DB Project insert failed: %v", err)
-// 			continue
-// 		}
-//
-// 		media := &models.Media{
-// 			ID:           mediaID,
-// 			FileName:     fileName,
-// 			FullURL:      fullURL,
-// 			ThumbnailURL: thumbURL,
-// 		}
-//
-// 		app.renderPartialHTMX(&outputBuffer, "partials/media_item.html", media)
-// 	}
-//
-// 	w.Header().Set("Content-Type", "text/html")
-// 	w.Write(outputBuffer.Bytes())
-// }
-
-// Delete Media File (DELETE)
-
-func (app *Application) DeleteMedia(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-
-	err := app.MediaModel.Delete(id)
-	if err != nil {
-		http.Error(w, "Error deleting media", http.StatusInternalServerError)
-		return
-	}
-
-	// ✅ Return 200 OK without content so HTMX removes the item
-	w.WriteHeader(http.StatusOK)
-}
-
 // About Page Handler
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
 	app.render(w, r, "about.html", map[string]interface{}{
@@ -1270,9 +1148,12 @@ func (app *Application) UpdateMediaOrderBulk(w http.ResponseWriter, r *http.Requ
 
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
+		log.Printf("❌ Unmarshal error: %v", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("🧪 GalleryID: %d | ProjectID: %d | Order: %v", payload.GalleryID, payload.ProjectID, payload.Order)
 
 	if payload.GalleryID != 0 {
 		err = app.MediaModel.UpdatePositionsForGallery(payload.GalleryID, payload.Order)
@@ -1281,9 +1162,12 @@ func (app *Application) UpdateMediaOrderBulk(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err != nil {
+		log.Printf("❌ Failed to bulk update media positions: %v", err)
 		http.Error(w, "Failed to update positions", http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("📦 Received reorder: GalleryID=%d | ProjectID=%d | Order=%v", payload.GalleryID, payload.ProjectID, payload.Order)
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -1631,4 +1515,50 @@ func (app *Application) AdminGalleryInfoEdit(w http.ResponseWriter, r *http.Requ
 	app.renderPartialHTMX(w, "partials/gallery_info_form.html", map[string]interface{}{
 		"Gallery": gallery,
 	})
+}
+
+func (app *Application) deleteFromS3(key string) error {
+	err := app.S3Client.RemoveObject(context.Background(), app.S3Bucket, key, minio.RemoveObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("❌ S3 delete failed for %s: %w", key, err)
+	}
+	return nil
+}
+
+// Delete Media File (DELETE)
+
+func (app *Application) DeleteMedia(w http.ResponseWriter, r *http.Request) {
+	mediaIDStr := r.FormValue("media_id")
+	mediaID, err := strconv.Atoi(mediaIDStr)
+	if err != nil || mediaID <= 0 {
+		log.Printf("❌ Invalid media ID: %v", err)
+		http.Error(w, "Invalid media ID", http.StatusBadRequest)
+		return
+	}
+
+	media, err := app.MediaModel.GetByID(mediaID)
+	if err != nil {
+		log.Printf("❌ Media not found: %v", err)
+		http.Error(w, "Media not found", http.StatusNotFound)
+		return
+	}
+
+	if err := app.MediaModel.Delete(mediaID); err != nil {
+		log.Printf("❌ Failed to delete media from DB: %v", err)
+		http.Error(w, "Failed to delete media", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete thumbnail (same folder, with "thumb_" prefix)
+	thumbKey := "Uploads/thumb_" + media.FileName
+
+	// 🧹 Delete from S3 (MinIO)
+	if err := app.deleteFromS3("Uploads/" + media.FileName); err != nil {
+		log.Printf("⚠️ Failed to delete full image: %v", err)
+	}
+	if err := app.deleteFromS3(thumbKey); err != nil {
+		log.Printf("⚠️ Failed to delete thumbnail: %v", err)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

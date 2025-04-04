@@ -78,7 +78,7 @@
 
 <div
   id="toast-alert"
-  class="toast-fade fixed top-5 right-5 z-50 w-96 transition-opacity duration-700 ease-in-out opacity-100"
+  class="toast-fade transition-all duration-500 ease-out transform opacity-0 {{ $colors.bg }} translate-y-2 scale-95 text-black px-4 py-3 rounded shadow-lg"
   {{
   if
   .Timeout
@@ -92,30 +92,26 @@
   end
   }}
 >
-  <div
-    class="rounded-md {{ $colors.bg }} p-4 shadow-lg border border-opacity-30"
-  >
-    <div class="flex">
-      <div class="shrink-0">
-        {{ if eq $variant "success" }}{{ template "icon-success" . }} {{ else if
-        eq $variant "error" }}{{ template "icon-error" . }} {{ else if eq
-        $variant "warning" }}{{ template "icon-warning" . }} {{ else }}{{
-        template "icon-info" . }} {{ end }}
+  <div class="flex">
+    <div class="shrink-0">
+      {{ if eq $variant "success" }}{{ template "icon-success" . }} {{ else if
+      eq $variant "error" }}{{ template "icon-error" . }} {{ else if eq $variant
+      "warning" }}{{ template "icon-warning" . }} {{ else }}{{ template
+      "icon-info" . }} {{ end }}
+    </div>
+    <div class="ml-3">
+      <h3 class="text-sm font-medium {{ $colors.text }}">{{ .Heading }}</h3>
+      <div class="mt-2 text-sm {{ $colors.text }}">
+        <p>{{ .Subtitle }}</p>
       </div>
-      <div class="ml-3">
-        <h3 class="text-sm font-medium {{ $colors.text }}">{{ .Heading }}</h3>
-        <div class="mt-2 text-sm {{ $colors.text }}">
-          <p>{{ .Subtitle }}</p>
-        </div>
-        <div class="mt-4">
-          <button
-            type="button"
-            class=" rounded-md {{ $colors.bg }} py-1.5 text-sm font-medium {{ $colors.text }} hover:opacity-80"
-            onclick="document.getElementById('toast-alert')?.remove()"
-          >
-            Dismiss
-          </button>
-        </div>
+      <div class="mt-4">
+        <button
+          type="button"
+          class=" rounded-md {{ $colors.bg }} py-1.5 text-sm font-medium {{ $colors.text }} hover:opacity-80"
+          onclick="document.getElementById('toast-alert')?.remove()"
+        >
+          Dismiss
+        </button>
       </div>
     </div>
   </div>

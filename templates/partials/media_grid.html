@@ -1,13 +1,14 @@
 {{ define "media_grid" }}
+<!-- Media Grid -->
 <div
   id='{{ or .ID "media-grid" }}'
-  class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1"
+  class="grid grid-cols-1 px-4 md:px-0 sm:grid-cols-2 md:grid-cols-3 gap-1 py-4 md:py-0"
 >
   {{ if not .Media }}
   <p class="text-red-500">⚠️ No media to display.</p>
   {{ end }} {{ range .Media }}
   <div
-    class="relative aspect-square hover:bg-black/50 flex border border-gray-400"
+    class="relative aspect-square hover:bg-black/50 flex"
     data-id="{{ .ID }}"
     {{
     if
@@ -46,7 +47,24 @@
     ></iframe>
 
     {{ else }}
-    <!-- 🖼️ Image -->
+    <!-- Check if GIF -->
+    {{ if hasSuffix .FileName ".gif" }}
+    <div class="relative w-full h-full">
+      <img
+        src="{{ .FullURL }}"
+        data-full="{{ .FullURL }}"
+        alt="{{ .FileName }}"
+        class="absolute inset-0 w-full h-full object-cover cursor-pointer"
+        loading="lazy"
+      />
+      <div
+        class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded shadow"
+      >
+        GIF
+      </div>
+    </div>
+    {{ else }}
+    <!-- 🖼️ Standard Image -->
     <img
       src="{{ .ThumbnailURL }}"
       data-full="{{ .FullURL }}"
@@ -54,6 +72,8 @@
       class="absolute inset-0 w-full h-full object-cover cursor-pointer"
       loading="lazy"
     />
+    {{ end }}
+    <!---->
     {{ end }}
   </div>
   {{ end }}

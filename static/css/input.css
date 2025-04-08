@@ -1,1 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Inconsolata:wdth,wght@87.5,200..900&display=swap");
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inconsolata", sans-serif;
+}

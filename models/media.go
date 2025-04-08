@@ -325,7 +325,7 @@ func (m *MediaModel) GetUnlinkedMedia(joinTable, foreignKey string, id int) ([]*
 		ORDER BY id DESC
 	`, joinTable, foreignKey)
 
-	log.Printf("🕵️ GetUnlinkedMedia: Running query for %s.%s = %d", joinTable, foreignKey, id)
+	// log.Printf("🕵️ GetUnlinkedMedia: Running query for %s.%s = %d", joinTable, foreignKey, id)
 
 	rows, err := m.DB.Query(context.Background(), query, id)
 	if err != nil {
@@ -351,7 +351,7 @@ func (m *MediaModel) GetUnlinkedMedia(joinTable, foreignKey string, id int) ([]*
 			m.EmbedURL = &embed
 		}
 
-		log.Printf("✅ Unlinked Media Found: ID=%d Name=%s", m.ID, m.FileName)
+		// log.Printf("✅ Unlinked Media Found: ID=%d Name=%s", m.ID, m.FileName)
 		media = append(media, &m)
 	}
 
@@ -431,4 +431,40 @@ func (m *MediaModel) Count() (int, error) {
 	var count int
 	err := m.DB.QueryRow(context.Background(), `SELECT COUNT(*) FROM media`).Scan(&count)
 	return count, err
+}
+
+// Get 5 latest media
+func (m *MediaModel) GetLatest(limit int) ([]*Media, error) {
+	rows, err := m.DB.Query(context.Background(), `
+	SELECT id, file_name, thumbnail_url, full_url, mime_type, embed_url
+	FROM media
+	ORDER BY id DESC
+	LIMIT $1
+`, limit)
+	if err != nil {
+		log.Printf("❌ GetLatest query error: %v", err)
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var mediaList []*Media
+	for rows.Next() {
+		var media Media
+		err := rows.Scan(
+			&media.ID,
+			&media.FileName,
+			&media.ThumbnailURL,
+			&media.FullURL,
+			&media.MimeType,
+			&media.EmbedURL,
+		)
+		if err != nil {
+			log.Printf("❌ GetLatest scan error: %v", err)
+			return nil, err
+		}
+		mediaList = append(mediaList, &media)
+	}
+
+	return mediaList, nil
 }

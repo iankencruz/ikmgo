@@ -367,3 +367,52 @@ func (g *GalleryModel) GetNextPosition(galleryID int) (int, error) {
 
 	return maxPosition + 1, nil
 }
+
+// Get Count of galleries in galleries table
+func (g *GalleryModel) Count() (int, error) {
+	var count int
+	err := g.DB.QueryRow(context.Background(), `
+		SELECT COUNT(*) FROM galleries
+	`).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// get 5 latest galleries
+func (g *GalleryModel) GetLatest(limit int) ([]*Gallery, error) {
+	rows, err := g.DB.Query(context.Background(), `
+		SELECT id, title, cover_image_id, featured
+		FROM galleries
+		WHERE published = TRUE
+		ORDER BY id DESC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var galleries []*Gallery
+	for rows.Next() {
+		var gallery Gallery
+		err := rows.Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageID, &gallery.Featured)
+		if err != nil {
+			return nil, err
+		}
+		galleries = append(galleries, &gallery)
+	}
+
+	return galleries, nil
+}
+
+// Get MediaCount of a gallery
+func (g *GalleryModel) GetMediaCount(galleryID int) (int, error) {
+	var count int
+	err := g.DB.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM gallery_media WHERE gallery_id = $1`, galleryID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

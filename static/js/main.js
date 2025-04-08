@@ -235,3 +235,26 @@ function getTabLabel(tabValue) {
   const map = { info: "Gallery Info", cover: "Cover Image" };
   return map[tabValue] || tabValue;
 }
+
+function toggleUserMenu(scope) {
+  const menu = document.getElementById(`userMenu${scope}`);
+  const button = document.getElementById(`userMenuButton${scope}`);
+
+  if (!menu || !button) {
+    console.warn(`⚠️ Menu or button not found for scope: ${scope}`);
+    return;
+  }
+
+  menu.classList.toggle("hidden");
+
+  // Close if clicked outside
+  document.addEventListener("click", function onDocClick(e) {
+    const clickedInsideMenu = menu.contains(e.target);
+    const clickedButton = button.contains(e.target);
+
+    if (!clickedInsideMenu && !clickedButton) {
+      menu.classList.add("hidden");
+      document.removeEventListener("click", onDocClick);
+    }
+  });
+}

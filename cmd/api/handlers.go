@@ -114,9 +114,89 @@ func (app *Application) Logout(w http.ResponseWriter, r *http.Request) {
 
 // Admin Dashboard Handler
 func (app *Application) AdminDashboard(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{} // ✅ Ensure a map is passed
-	data["Title"] = "Admin Dashboard"
-	data["ActiveLink"] = "dashboard"
+	galleryCount, err := app.GalleryModel.Count()
+	if err != nil {
+		log.Printf("❌ Error fetching gallery count: %v", err)
+		http.Error(w, "Error fetching gallery count", http.StatusInternalServerError)
+		return
+	}
+
+	// get latest galleries
+	latestGalleries, err := app.GalleryModel.GetLatest(5)
+	if err != nil {
+		log.Printf("❌ Error fetching latest galleries: %v", err)
+		http.Error(w, "Error fetching latest galleries", http.StatusInternalServerError)
+		return
+	}
+
+	projectCount, err := app.ProjectModel.Count()
+	if err != nil {
+		log.Printf("❌ Error fetching project count: %v", err)
+		http.Error(w, "Error fetching project count", http.StatusInternalServerError)
+		return
+	}
+
+	// get latest projects
+	latestProjects, err := app.ProjectModel.GetLatest(5)
+	if err != nil {
+		log.Printf("❌ Error fetching latest projects: %v", err)
+		http.Error(w, "Error fetching latest projects", http.StatusInternalServerError)
+		return
+	}
+
+	// get count of users
+	userCount, err := app.UserModel.Count()
+	if err != nil {
+		log.Printf("❌ Error fetching user count: %v", err)
+		http.Error(w, "Error fetching user count", http.StatusInternalServerError)
+		return
+	}
+
+	// Get Media Count
+	mediaCount, err := app.MediaModel.Count()
+	if err != nil {
+		log.Printf("❌ Error fetching media count: %v", err)
+		http.Error(w, "Error fetching media count", http.StatusInternalServerError)
+		return
+	}
+
+	// Get Latest Media
+	latestMedia, err := app.MediaModel.GetLatest(5)
+	if err != nil {
+		log.Printf("❌ Error fetching latest media: %v", err)
+		http.Error(w, "Error fetching latest media", http.StatusInternalServerError)
+		return
+	}
+
+	// Get Contacts Count
+	contactCount, err := app.ContactModel.Count()
+	if err != nil {
+		log.Printf("❌ Error fetching contact count: %v", err)
+		http.Error(w, "Error fetching contact count", http.StatusInternalServerError)
+		return
+	}
+	// Get latest contacts
+	contacts, err := app.ContactModel.GetLatest(5)
+	if err != nil {
+		log.Printf("❌ Error fetching latest contacts: %v", err)
+		http.Error(w, "Error fetching latest contacts", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":        "Admin Dashboard",
+		"ActiveLink":   "dashboard",
+		"GalleryCount": galleryCount,
+
+		"LatestGalleries": latestGalleries,
+		"ProjectCount":    projectCount,
+		"LatestProjects":  latestProjects,
+		"UserCount":       userCount,
+		"MediaCount":      mediaCount,
+		"LatestMedia":     latestMedia,
+		"ContactCount":    contactCount,
+		"LatestContacts":  contacts,
+	}
 	app.render(w, r, "admin/dashboard.html", data)
 }
 
@@ -388,7 +468,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 		"Limit":             limit,
 		"TotalPages":        totalPages,
 		"HasNext":           hasNext,
-		"PaginationBaseURL": fmt.Sprintf("/admin/gallery/%d", id), // or /projects, etc.
+		"PaginationBaseURL": fmt.Sprintf("/admin/gallery/%d", id),
 		"PaginationTarget":  "#sortableGrid",
 	}
 
@@ -563,8 +643,8 @@ func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) 
 		"Title":             "Edit Project",
 		"Media":             media,
 		"MediaCount":        project.MediaCount,
+		"ProjectID":         id,
 		"Project":           project,
-		"Item":              project,
 		"Page":              page,
 		"Limit":             limit,
 		"TotalPages":        totalPages,
@@ -1263,7 +1343,7 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 
 	if projectIDStr != "" {
 		projectID, _ := strconv.Atoi(projectIDStr)
-		log.Printf("🧩 UploadMediaModal called with project_id: %d", projectID)
+		// log.Printf("🧩 UploadMediaModal called with project_id: %d", projectID)
 
 		existingMedia, err := app.MediaModel.GetUnlinkedMedia("project_media", "project_id", projectID)
 		if err != nil {
@@ -1284,7 +1364,7 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 
 	if galleryIDStr != "" {
 		galleryID, _ := strconv.Atoi(galleryIDStr)
-		log.Printf("🧩 UploadMediaModal called with gallery_id: %d", galleryID)
+		// log.Printf("🧩 UploadMediaModal called with gallery_id: %d", galleryID)
 
 		existingMedia, err := app.MediaModel.GetUnlinkedMedia("gallery_media", "gallery_id", galleryID)
 		if err != nil {
@@ -1303,7 +1383,7 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Printf("🧩 UploadMediaModal called with no context (standalone)")
+	// log.Printf("🧩 UploadMediaModal called with no context (standalone)")
 
 	app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
 		"ExistingMedia": nil,
@@ -1385,10 +1465,9 @@ func (app *Application) AttachMediaToItem(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// ✅ Fetch updated media list
-		mediaItems, err := app.ProjectModel.GetMediaPaginated(projectID, 5, 0)
+		media, err := app.MediaModel.GetByIDUnsafe(mediaID)
 		if err != nil {
-			http.Error(w, "Failed to load project media", http.StatusInternalServerError)
+			http.Error(w, "Failed to load media", http.StatusInternalServerError)
 			return
 		}
 
@@ -1396,8 +1475,9 @@ func (app *Application) AttachMediaToItem(w http.ResponseWriter, r *http.Request
 		w.Header().Set("HX-Trigger-After-Settle", "show-toast")
 
 		// ✅ Render media_grid block inside edit_project.html
-		app.renderHTMX(w, "admin/edit_project.html", "media_grid", map[string]interface{}{
-			"Media": mediaItems,
+		app.renderPartialHTMX(w, "partials/media_item.html", map[string]interface{}{
+			"Media":     media,
+			"ProjectID": projectID,
 		})
 		return
 	}

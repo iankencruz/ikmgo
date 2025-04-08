@@ -193,3 +193,53 @@ func (m *ProjectModel) UpdateBasicInfo(id int, title, description string) error 
 	`, title, description, id)
 	return err
 }
+
+// Get Count of Projects
+func (p *ProjectModel) Count() (int, error) {
+	var count int
+	err := p.DB.QueryRow(context.Background(), `
+		SELECT COUNT(*) FROM projects
+	`).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// Get 5 latest projects
+func (p *ProjectModel) GetLatest(limit int) ([]map[string]interface{}, error) {
+	rows, err := p.DB.Query(context.Background(), `
+		SELECT pr.id, pr.title, pr.description, pr.cover_image_id, m.thumbnail_url
+		FROM projects pr
+		LEFT JOIN media m ON pr.cover_image_id = m.id
+		WHERE pr.published = TRUE
+		ORDER BY pr.id DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var title, description string
+		var coverImageID *int
+		var coverImageURL *string
+
+		if err := rows.Scan(&id, &title, &description, &coverImageID, &coverImageURL); err != nil {
+			return nil, err
+		}
+
+		projects = append(projects, map[string]interface{}{
+			"ID":            id,
+			"Title":         title,
+			"Description":   description,
+			"CoverImageID":  coverImageID,
+			"CoverImageURL": coverImageURL,
+		})
+	}
+
+	return projects, nil
+}

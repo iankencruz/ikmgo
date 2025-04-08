@@ -124,3 +124,16 @@ func (u *UserModel) Update(id int, fname, lname, email string) error {
 		fname, lname, email, id)
 	return err
 }
+
+// Get Count
+func (u *UserModel) Count() (int, error) {
+	var count int
+	err := u.DB.QueryRow(context.Background(),
+		"SELECT COUNT(*) FROM users").Scan(&count)
+	if err != nil {
+		log.Printf("❌ Error counting users: %v", err)
+		return 0, err
+	}
+	log.Printf("✅ Total users: %d", count)
+	return count, nil
+}

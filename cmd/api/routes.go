@@ -23,10 +23,10 @@ func (app *Application) routes() http.Handler {
 	r.Get("/", app.Home)
 	r.Get("/about", app.About)
 	r.Get("/contact", app.Contact)
-	r.Get("/galleries", app.Galleries)
-	r.Get("/gallery/{id}", app.GalleryView)
+	r.Get("/galleries", app.PublicGalleriesList)
+	r.Get("/gallery/{slug}", app.GalleryView)
 	r.Get("/projects", app.PublicProjectsList)
-	r.Get("/project/{id}", app.PublicProjectView)
+	r.Get("/project/{slug}", app.PublicProjectView)
 
 	// Authentication Routes
 	r.Get("/login", app.Login)
@@ -40,7 +40,7 @@ func (app *Application) routes() http.Handler {
 
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
-		// r.Use(app.AuthMiddleware)
+		r.Use(app.AuthMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin/dashboard", 301)
@@ -67,6 +67,7 @@ func (app *Application) routes() http.Handler {
 		r.Get("/projects", app.AdminProjects)           // list view
 		r.Get("/project/create", app.CreateProjectForm) // show form
 		r.Post("/project/create", app.CreateProject)    // handle form submit
+		r.Delete("/project/{id}", app.DeleteProject)    // delete project
 		r.Get("/project/{id}", app.EditProjectForm)
 		r.Get("/project/edit/{id}", app.EditProjectForm)        // show edit form
 		r.Post("/project/edit/{id}", app.UpdateProject)         // handle update

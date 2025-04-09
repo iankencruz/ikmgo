@@ -1,4 +1,7 @@
-{{define "title"}}Login{{end}}
+{{define "meta"}}
+<title>{{ index .Settings "site_title" }} | {{ .Title}}</title>
+{{end}}
+
 <!-- TItle -->
 {{ define "content" }}
 

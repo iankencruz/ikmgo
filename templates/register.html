@@ -1,4 +1,6 @@
-{{ define "title" }} Register {{ end }}
+{{define "meta"}}
+<title>{{ index .Settings "site_title" }} | {{ .Title}}</title>
+{{end}}
 <!-- -->
 {{ define "content" }}
 

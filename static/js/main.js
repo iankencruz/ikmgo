@@ -258,3 +258,21 @@ function toggleUserMenu(scope) {
     }
   });
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+  const titleInput = document.getElementById("title");
+  const slugInput = document.getElementById("slug");
+
+  if (titleInput && slugInput) {
+    titleInput.addEventListener("input", () => {
+      const slug = titleInput.value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9 -]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+
+      slugInput.value = slug;
+    });
+  }
+});

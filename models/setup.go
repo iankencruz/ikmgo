@@ -34,14 +34,18 @@ func CreateTablesIfNotExist(db *pgxpool.Pool) error {
 			id SERIAL PRIMARY KEY,
 			title TEXT NOT NULL,
 			description TEXT,
+			slug TEXT UNIQUE NOT NULL,
 			published BOOLEAN DEFAULT FALSE,
-			cover_image_id INTEGER REFERENCES media(id) ON DELETE SET NULL
+			cover_image_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+			created_at TIMESTAMP DEFAULT NOW(),
+			updated_at TIMESTAMP DEFAULT NOW()
 		);`,
 
 		`CREATE TABLE IF NOT EXISTS galleries (
 			id SERIAL PRIMARY KEY,
 			title TEXT NOT NULL,
 			description TEXT,
+			slug TEXT UNIQUE NOT NULL,
 			published BOOLEAN DEFAULT FALSE,
 			featured BOOLEAN DEFAULT FALSE,
 			cover_image_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
@@ -116,8 +120,6 @@ func EnsureAdminUserExists(userModel *UserModel) error {
 		log.Print("✅ Default admin user created")
 	} else {
 		log.Printf("✅ %d user(s) already exist. Skipping admin bootstrap.", len(users))
-		log.Print(os.Getenv("ADMIN_EMAIL"))
-		log.Print(os.Getenv("ADMIN_PASS"))
 	}
 
 	return nil

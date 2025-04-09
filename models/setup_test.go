@@ -12,7 +12,7 @@ import (
 func setupTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load("../.env"); err != nil {
 		t.Log("⚠️  .env file not found, assuming env vars are set")
 	}
 

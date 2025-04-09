@@ -1,4 +1,29 @@
-{{ define "title" }} Galleries {{ end }}
+{{define "meta"}}
+<title>{{ index .Settings "site_title" }} | {{ .Title}}</title>
+<meta name="description" content="{{ .Description }}" />
+{{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}" />
+{{ end }}
+
+<!-- Open Graph -->
+<meta property="og:title" content="{{ .Title }}" />
+<meta property="og:description" content="{{ .Description }}" />
+{{ if .OGImage }}
+<meta property="og:image" content="{{ .OGImage }}" />
+{{ end }}
+<meta property="og:url" content="{{ .CanonicalURL }}" />
+<meta property="og:type" content="website" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ .Title }}" />
+<meta name="twitter:description" content="{{ .Description }}" />
+{{ if .OGImage }}
+<meta name="twitter:image" content="{{ .OGImage }}" />
+{{ end }}
+<!-- End OGImage If-->
+{{end}}
+<!-- End Meta-->
+
 <!-- Title -->
 {{ define "content" }}
 <div class="px-4 sm:px-6 lg:px-8 py-10">
@@ -7,7 +32,7 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
     {{ range .Galleries }}
     <a
-      href="/gallery/{{ .ID }}"
+      href="/gallery/{{ .Slug }}"
       class="group relative block overflow-hidden shadow hover:shadow-lg"
     >
       {{ if .CoverImageURL }}
@@ -20,7 +45,7 @@
       <div
         class="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500"
       >
-        No Cover
+        No Cover -
       </div>
       {{ end }}
       <div

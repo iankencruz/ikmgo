@@ -13,6 +13,10 @@
       value="{{ .Gallery.Title }}"
       class="border rounded w-full p-2"
     />
+    <label class="block font-medium text-gray-700">Description</label>
+    <textarea name="description" class="border rounded w-full p-2">
+      {{ .Gallery.Description }}
+    </textarea>
   </div>
   <div class="flex gap-2">
     <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">

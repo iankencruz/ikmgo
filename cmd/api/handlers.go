@@ -302,9 +302,10 @@ func (app *Application) PublicProjectsList(w http.ResponseWriter, r *http.Reques
 	log.Printf("Project Publics: %v", projects)
 
 	data := map[string]interface{}{
-		"Title":      "Projects",
-		"Projects":   projects,
-		"ActiveLink": "projects",
+		"Title":        "Projects",
+		"Projects":     projects,
+		"CanonicalURL": utils.BuildCanonicalURL(r, "/projects"),
+		"ActiveLink":   "projects",
 	}
 
 	app.render(w, r, "projects.html", data)
@@ -329,28 +330,23 @@ func (app *Application) SetProjectVisibility(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request) {
-	projectIDStr := chi.URLParam(r, "id")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil || projectID <= 0 {
-		http.Error(w, "Invalid project ID", http.StatusBadRequest)
-		return
-	}
+	slug := chi.URLParam(r, "slug")
 
-	project, err := app.ProjectModel.GetByID(projectID)
+	project, err := app.ProjectModel.GetBySlug(slug)
 	if err != nil {
 		log.Printf("❌ Project not found: %v", err)
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
 
-	media, err := app.ProjectModel.GetMediaPaginated(projectID, 100, 0)
+	media, err := app.ProjectModel.GetMediaPaginated(project.ID, 100, 0)
 	if err != nil {
-		log.Printf("❌ Failed to get media for project %d: %v", projectID, err)
+		log.Printf("❌ Failed to get media for project %d: %v", project.ID, err)
 		http.Error(w, "Unable to load media", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("✅ Project %d media count: %d", projectID, len(media))
+	log.Printf("✅ Project %d media count: %d", project.ID, len(media))
 
 	var heroMedia []*models.Media
 	var restMedia []*models.Media
@@ -362,12 +358,17 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 		heroMedia = media
 	}
 
+	canonicalURL := fmt.Sprintf("https://%s/projects/%s", os.Getenv("BASE_URL"), project.Slug)
+
 	data := map[string]interface{}{
-		"Title":     project.Title,
-		"Project":   project,
-		"ProjectID": projectID,
-		"HeroMedia": heroMedia,
-		"Media":     restMedia, // remaining media
+		"Title":        project.Title,
+		"Project":      project,
+		"ProjectID":    project.ID,
+		"CanonicalURL": canonicalURL,
+		"Description":  project.Description,
+		"OGImage":      project.CoverImageURL,
+		"HeroMedia":    heroMedia,
+		"Media":        restMedia, // remaining media
 	}
 
 	log.Printf("Project Media Count: %d", len(media))
@@ -383,30 +384,10 @@ func (app *Application) AdminGalleries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ✅ Ensure GalleryMedia is always initialized
-	galleryMedia := make(map[int][]*models.Media)
-
-	for _, gallery := range galleries {
-		// ✅ Use map indexing instead of dot notation
-		galleryID, ok := gallery["ID"].(int)
-		if !ok {
-			log.Printf("❌ Invalid gallery ID format: %v", gallery["ID"])
-			continue
-		}
-
-		media, err := app.GalleryModel.GetMediaPaginated(galleryID, 5, 0)
-		if err != nil {
-			log.Printf("❌ Error fetching media for gallery %d: %v", galleryID, err)
-			continue
-		}
-		galleryMedia[galleryID] = media
-	}
-
 	data := map[string]interface{}{
-		"Title":        "Manage Galleries",
-		"Galleries":    galleries,    // ✅ Passes proper `[]map[string]interface{}` slice
-		"GalleryMedia": galleryMedia, // ✅ Ensures media is available per gallery
-		"ActiveLink":   "galleries",
+		"Title":      "Manage Galleries",
+		"Galleries":  galleries,
+		"ActiveLink": "galleries",
 	}
 
 	app.render(w, r, "admin/galleries.html", data)
@@ -487,8 +468,9 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 func (app *Application) UpdateGallery(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	title := r.FormValue("title")
+	description := r.FormValue("description")
 
-	err := app.GalleryModel.Update(id, title)
+	err := app.GalleryModel.Update(id, title, description, utils.Slugify(title))
 	if err != nil {
 		http.Error(w, "Error updating gallery", http.StatusInternalServerError)
 		return
@@ -509,7 +491,9 @@ func (app *Application) UpdateGallery(w http.ResponseWriter, r *http.Request) {
 // Create a New Gallery (POST)
 func (app *Application) CreateGallery(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
-	err := app.GalleryModel.Create(title)
+	description := r.FormValue("description")
+
+	err := app.GalleryModel.Create(title, description, utils.Slugify(title))
 	if err != nil {
 		http.Error(w, "Error creating gallery", http.StatusInternalServerError)
 		return
@@ -518,10 +502,16 @@ func (app *Application) CreateGallery(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) DeleteGallery(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	idStr := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
+		return
+	}
 
 	// Delete from database
-	err := app.GalleryModel.Delete(id)
+	err = app.GalleryModel.Delete(id)
 	if err != nil {
 		http.Error(w, "Error deleting gallery", http.StatusInternalServerError)
 		return
@@ -591,13 +581,32 @@ func (app *Application) CreateProject(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	description := r.FormValue("description")
 
-	err := app.ProjectModel.Create(title, description)
+	err := app.ProjectModel.Create(title, description, utils.Slugify(title))
 	if err != nil {
 		http.Error(w, "Error creating project", http.StatusInternalServerError)
 		return
 	}
 
 	http.Redirect(w, r, "/admin/projects", http.StatusSeeOther)
+}
+
+// Delete Project
+func (app *Application) DeleteProject(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid project ID", http.StatusBadRequest)
+		return
+	}
+
+	// Delete from database
+	err = app.ProjectModel.Delete(id)
+	if err != nil {
+		http.Error(w, "Error deleting project", http.StatusInternalServerError)
+		return
+	}
+	// HTMX: Remove the row without reloading
+	w.WriteHeader(http.StatusOK)
 }
 
 func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) {
@@ -1037,7 +1046,7 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get All Galleries
-func (app *Application) Galleries(w http.ResponseWriter, r *http.Request) {
+func (app *Application) PublicGalleriesList(w http.ResponseWriter, r *http.Request) {
 	galleries, err := app.GalleryModel.GetAllPublic()
 	log.Printf("Galleries: %v", galleries)
 
@@ -1046,50 +1055,34 @@ func (app *Application) Galleries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.render(w, r, "galleries.html", map[string]interface{}{
-		"Title":      "Galleries",
-		"Galleries":  galleries,
-		"ActiveLink": "galleries",
+		"Title":        "Galleries",
+		"Galleries":    galleries,
+		"CanonicalURL": utils.BuildCanonicalURL(r, "/galleries"),
+		"ActiveLink":   "galleries",
 	})
 }
 
 // View Gallery Page
 
 func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
-	galleryIDStr := chi.URLParam(r, "id")
+	slug := chi.URLParam(r, "slug")
 
-	// ✅ Check if galleryID is null or invalid
-	if galleryIDStr == "" || galleryIDStr == "null" {
-		log.Println("❌ Invalid gallery ID: received 'null'")
-		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
-		return
-	}
+	gallery, err := app.GalleryModel.GetBySlug(slug)
 
-	galleryID, err := strconv.Atoi(galleryIDStr)
-	if err != nil {
-		log.Printf("❌ Invalid gallery ID: %v", err)
-		http.Error(w, "Invalid gallery ID", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("✅ GalleryView requested for ID: %d", galleryID)
-
-	// Fetch gallery
-	gallery, err := app.GalleryModel.GetByID(galleryID)
-	if err != nil {
-		log.Printf("❌ Error fetching gallery: %v", err)
-		http.Error(w, "Gallery not found", http.StatusNotFound)
-		return
-	}
+	log.Printf("✅ GalleryView requested for ID: %d", gallery.ID)
 
 	// Fetch media
-	media, err := app.GalleryModel.GetMediaPaginated(galleryID, 25, 0)
+	media, err := app.GalleryModel.GetMediaPaginated(gallery.ID, 25, 0)
 	if err != nil {
 		log.Printf("❌ Error fetching media: %v", err)
 		http.Error(w, "Error retrieving media", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("✅ Fetched %d media items for Gallery ID: %d", len(media), galleryID)
+	log.Printf("✅ Fetched %d media items for Gallery ID: %d", len(media), gallery.ID)
+
+	// Canonical URL for SEO
+	canonical := utils.BuildCanonicalURL(r, fmt.Sprintf("/gallery/%s", gallery.Slug))
 
 	if r.Header.Get("HX-Request") != "" {
 		log.Println("🔄 HTMX request detected, rendering media partial")
@@ -1101,8 +1094,11 @@ func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.render(w, r, "gallery.html", map[string]interface{}{
-		"Gallery": gallery,
-		"Media":   media,
+		"Title":        gallery.Title,
+		"Description":  gallery.Description,
+		"CanonicalURL": canonical,
+		"Gallery":      gallery,
+		"Media":        media,
 	})
 }
 
@@ -1426,7 +1422,7 @@ func (app *Application) ProjectInfoUpdate(w http.ResponseWriter, r *http.Request
 	title := r.FormValue("title")
 	description := r.FormValue("description")
 
-	err := app.ProjectModel.UpdateBasicInfo(id, title, description)
+	err := app.ProjectModel.UpdateBasicInfo(id, title, description, utils.Slugify(title))
 	if err != nil {
 		http.Error(w, "Update failed", http.StatusInternalServerError)
 		return

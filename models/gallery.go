@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -11,7 +12,9 @@ import (
 type Gallery struct {
 	ID            int
 	Title         string
+	Slug          string
 	Featured      bool
+	Description   string
 	CoverImageID  *int    // ✅ Cover Image ID (Nullable)
 	CoverImageURL *string // ✅ Stores image URL (Joined from media)
 	MediaCount    int     // ✅ Count of Media Items
@@ -29,8 +32,8 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 
 	// Fetch the gallery by title
 	err := g.DB.QueryRow(context.Background(),
-		"SELECT id, title FROM galleries WHERE title=$1", title).
-		Scan(&gallery.ID, &gallery.Title)
+		"SELECT id, title, slug, description FROM galleries WHERE title=$1", title).
+		Scan(&gallery.ID, &gallery.Title, &gallery.Slug, &gallery.Description)
 
 	if err != nil {
 		return nil, nil, err
@@ -70,40 +73,6 @@ func (g *GalleryModel) GetByTitle(title string) (*Gallery, []*Media, error) {
 	return &gallery, images, nil
 }
 
-// GetFeatured retrieves the gallery marked as featured
-func (g *GalleryModel) GetFeatured() (*Gallery, []*Media, error) {
-	var gallery Gallery
-
-	// Fetch the featured gallery
-	err := g.DB.QueryRow(context.Background(),
-		"SELECT id, title FROM galleries WHERE featured = TRUE LIMIT 1").
-		Scan(&gallery.ID, &gallery.Title)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Fetch associated images including their URL
-	rows, err := g.DB.Query(context.Background(),
-		"SELECT id, file_name, thumbnail_url,  full_url, position FROM media WHERE gallery_id = $1 ORDER BY id ASC", gallery.ID)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-
-	var images []*Media
-	for rows.Next() {
-		var media Media
-		err := rows.Scan(&media.ID, &media.FileName, &media.ThumbnailURL, media.FullURL, media.Position) // ✅ Fetch media URL
-		if err != nil {
-			return nil, nil, err
-		}
-		images = append(images, &media)
-	}
-
-	return &gallery, images, nil
-}
-
 // SetFeatured updates the featured gallery
 func (g *GalleryModel) SetFeatured(id int) error {
 	// Unset the previous featured gallery
@@ -113,19 +82,28 @@ func (g *GalleryModel) SetFeatured(id int) error {
 	}
 
 	// Set the new featured gallery
-	_, err = g.DB.Exec(context.Background(), "UPDATE galleries SET featured = TRUE WHERE id = $1", id)
-	return err
+	res, err := g.DB.Exec(context.Background(), "UPDATE galleries SET featured = TRUE WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("no gallery found with ID %d", id)
+	}
+	return nil
 }
 
 // Create adds a new gallery to the database
-func (g *GalleryModel) Create(title string) error {
-	_, err := g.DB.Exec(context.Background(), "INSERT INTO galleries (title) VALUES ($1)", title)
+func (g *GalleryModel) Create(title, description, slug string) error {
+	if strings.TrimSpace(slug) == "" {
+		return fmt.Errorf("slug cannot be empty")
+	}
+	_, err := g.DB.Exec(context.Background(), "INSERT INTO galleries (title, description, slug) VALUES ($1, $2, $3)", title, description, slug)
 	return err
 }
 
 func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
-		`SELECT g.id, g.title, g.cover_image_id, m.full_url AS cover_image_url,
+		`SELECT g.id, g.title, g.slug, g.description, g.cover_image_id, m.full_url AS cover_image_url,
                 (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
          FROM galleries g
          LEFT JOIN media m ON g.cover_image_id = m.id
@@ -139,12 +117,14 @@ func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 	var galleries []map[string]interface{}
 	for rows.Next() {
 		var id int
+		var description string
+		var slug string
 		var title string
 		var coverImageID *int
 		var coverImageURL *string
 		var mediaCount int
 
-		err := rows.Scan(&id, &title, &coverImageID, &coverImageURL, &mediaCount)
+		err := rows.Scan(&id, &title, &slug, &description, &coverImageID, &coverImageURL, &mediaCount)
 		if err != nil {
 			return nil, err
 		}
@@ -152,6 +132,7 @@ func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 		gallery := map[string]interface{}{
 			"ID":            id,
 			"Title":         title,
+			"Slug":          slug,
 			"CoverImageID":  coverImageID,
 			"CoverImageURL": coverImageURL,
 			"MediaCount":    mediaCount,
@@ -165,11 +146,11 @@ func (g *GalleryModel) GetAllPublic() ([]map[string]interface{}, error) {
 
 func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 	rows, err := g.DB.Query(context.Background(),
-		`SELECT g.id, g.title, g.published, m.full_url AS cover_image_url,
-                (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
-         FROM galleries g
-         LEFT JOIN media m ON g.id = m.id
-         ORDER BY g.id ASC`)
+		`SELECT g.id, g.title, g.slug, g.description, g.published, m.full_url AS cover_image_url,
+	       (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
+		FROM galleries g
+		LEFT JOIN media m ON g.cover_image_id = m.id
+		ORDER BY g.id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -179,11 +160,13 @@ func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 	for rows.Next() {
 		var id int
 		var title string
+		var slug string
 		var published bool
 		var coverImageURL *string
 		var mediaCount int
+		var description string
 
-		err := rows.Scan(&id, &title, &published, &coverImageURL, &mediaCount)
+		err := rows.Scan(&id, &title, &slug, &description, &published, &coverImageURL, &mediaCount)
 		if err != nil {
 			return nil, err
 		}
@@ -203,9 +186,15 @@ func (g *GalleryModel) GetAll() ([]map[string]interface{}, error) {
 
 // SetCoverImage updates the cover image of a gallery
 func (g *GalleryModel) SetCoverImage(galleryID, mediaID int) error {
-	_, err := g.DB.Exec(context.Background(),
+	res, err := g.DB.Exec(context.Background(),
 		"UPDATE galleries SET cover_image_id = $1 WHERE id = $2", mediaID, galleryID)
-	return err
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("no gallery found with ID %d", galleryID)
+	}
+	return nil
 }
 
 // GetByID retrieves a single gallery by its ID
@@ -213,21 +202,21 @@ func (g *GalleryModel) SetCoverImage(galleryID, mediaID int) error {
 func (g *GalleryModel) GetByID(id int) (*Gallery, error) {
 	var gallery Gallery
 	err := g.DB.QueryRow(context.Background(), `
-		SELECT g.id, g.title, g.published, m.full_url AS cover_image_url,
+		SELECT g.id, g.title, g.slug, g.description, g.published, g.cover_image_id, m.full_url AS cover_image_url,
 			   (SELECT COUNT(*) FROM gallery_media WHERE gallery_media.gallery_id = g.id) AS media_count
 		FROM galleries g
 		LEFT JOIN media m ON g.cover_image_id = m.id
 		WHERE g.id = $1
 		`, id).
-		Scan(&gallery.ID, &gallery.Title, &gallery.Published, &gallery.CoverImageURL, &gallery.MediaCount)
+		Scan(&gallery.ID, &gallery.Title, &gallery.Slug, &gallery.Description, &gallery.Published, &gallery.CoverImageID, &gallery.CoverImageURL, &gallery.MediaCount)
 
 	if err != nil {
 		log.Printf("⚠️ Scan fallback due to broken cover_image_id: %v", err)
 
 		// fallback query without the join
 		err = g.DB.QueryRow(context.Background(),
-			`SELECT id, title FROM galleries WHERE id = $1`, id).
-			Scan(&gallery.ID, &gallery.Title)
+			`SELECT id, title, description, slug, published, cover_image_id FROM galleries WHERE id = $1`, id).
+			Scan(&gallery.ID, &gallery.Title, &gallery.Description, &gallery.Slug, &gallery.Published, &gallery.CoverImageID)
 
 		// set to nil manually
 		gallery.CoverImageURL = nil
@@ -241,20 +230,46 @@ func (g *GalleryModel) GetByID(id int) (*Gallery, error) {
 }
 
 // Update updates the title of an existing gallery
-func (g *GalleryModel) Update(id int, title string) error {
-	_, err := g.DB.Exec(context.Background(), "UPDATE galleries SET title=$1 WHERE id=$2", title, id)
-	return err
+func (g *GalleryModel) Update(id int, title, description, slug string) error {
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("title cannot be empty")
+	}
+
+	res, err := g.DB.Exec(context.Background(), "UPDATE galleries SET title=$1, description=$2, slug=$3 WHERE id=$4", title, description, slug, id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("no gallery found with ID %d", id)
+	}
+	return nil
 }
 
 // Delete removes a gallery from the database
-func (g *GalleryModel) Delete(id string) error {
-	_, err := g.DB.Exec(context.Background(), "DELETE FROM galleries WHERE id=$1", id)
-	return err
+func (g *GalleryModel) Delete(id int) error {
+	result, err := g.DB.Exec(context.Background(), "DELETE FROM galleries WHERE id=$1", id)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("no gallery found with ID %d", id)
+	}
+
+	return nil
 }
 
 func (g *GalleryModel) SetPublished(id int, published bool) error {
-	_, err := g.DB.Exec(context.Background(), "UPDATE galleries SET published=$1 WHERE id=$2", published, id)
-	return err
+	result, err := g.DB.Exec(context.Background(), "UPDATE galleries SET published=$1 WHERE id=$2", published, id)
+	if err != nil {
+		return fmt.Errorf("failed to set published status: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("no rows affected, gallery with ID %d may not exist", id)
+	}
+
+	return nil
 }
 
 // GetMedia returns all media linked to a gallery via the gallery_media join table
@@ -383,7 +398,7 @@ func (g *GalleryModel) Count() (int, error) {
 // get 5 latest galleries
 func (g *GalleryModel) GetLatest(limit int) ([]*Gallery, error) {
 	rows, err := g.DB.Query(context.Background(), `
-		SELECT id, title, cover_image_id, featured
+		SELECT id, title, slug, description, cover_image_id, featured
 		FROM galleries
 		WHERE published = TRUE
 		ORDER BY id DESC
@@ -396,7 +411,7 @@ func (g *GalleryModel) GetLatest(limit int) ([]*Gallery, error) {
 	var galleries []*Gallery
 	for rows.Next() {
 		var gallery Gallery
-		err := rows.Scan(&gallery.ID, &gallery.Title, &gallery.CoverImageID, &gallery.Featured)
+		err := rows.Scan(&gallery.ID, &gallery.Title, &gallery.Slug, &gallery.Description, &gallery.CoverImageID, &gallery.Featured)
 		if err != nil {
 			return nil, err
 		}
@@ -415,4 +430,17 @@ func (g *GalleryModel) GetMediaCount(galleryID int) (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+func (g *GalleryModel) GetBySlug(slug string) (*Gallery, error) {
+	var gallery Gallery
+	err := g.DB.QueryRow(context.Background(), `
+		SELECT id, title, slug, description, cover_image_id, published
+		FROM galleries WHERE slug = $1`, slug).Scan(
+		&gallery.ID, &gallery.Title, &gallery.Slug, &gallery.Description, &gallery.CoverImageID, &gallery.Published,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &gallery, nil
 }

@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -10,6 +12,7 @@ import (
 type Project struct {
 	ID            int
 	Title         string
+	Slug          string
 	Description   string
 	CoverImageID  *int
 	CoverImageURL *string
@@ -22,9 +25,10 @@ type ProjectModel struct {
 }
 
 // GetAllPublic returns all published projects with optional cover image
-func (p *ProjectModel) GetAllPublic() ([]map[string]interface{}, error) {
+
+func (p *ProjectModel) GetAllPublic() ([]*Project, error) {
 	rows, err := p.DB.Query(context.Background(), `
-		SELECT pr.id, pr.title, pr.description, pr.cover_image_id, m.thumbnail_url
+		SELECT pr.id, pr.title, pr.slug, pr.description, pr.cover_image_id, m.thumbnail_url
 		FROM projects pr
 		LEFT JOIN media m ON pr.cover_image_id = m.id
 		WHERE pr.published = TRUE
@@ -35,35 +39,29 @@ func (p *ProjectModel) GetAllPublic() ([]map[string]interface{}, error) {
 	}
 	defer rows.Close()
 
-	var projects []map[string]interface{}
+	var projects []*Project
 	for rows.Next() {
-		var id int
-		var title, description string
-		var coverImageID *int
-		var coverImageURL *string
-
-		if err := rows.Scan(&id, &title, &description, &coverImageID, &coverImageURL); err != nil {
+		var project Project
+		err := rows.Scan(&project.ID, &project.Title, &project.Slug, &project.Description, &project.CoverImageID, &project.CoverImageURL)
+		if err != nil {
 			return nil, err
 		}
-
-		projects = append(projects, map[string]interface{}{
-			"ID":            id,
-			"Title":         title,
-			"Description":   description,
-			"CoverImageID":  coverImageID,
-			"CoverImageURL": coverImageURL,
-		})
+		projects = append(projects, &project)
 	}
 
 	return projects, nil
 }
 
 func (p *ProjectModel) SetPublished(id int, published bool) error {
-	_, err := p.DB.Exec(context.Background(),
-		`UPDATE projects SET published = $1 WHERE id = $2`,
-		published, id,
-	)
-	return err
+	res, err := p.DB.Exec(context.Background(),
+		"UPDATE projects SET published = $1 WHERE id = $2", published, id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("no project found with ID %d", id)
+	}
+	return nil
 }
 
 // GetByID returns a specific project by its ID
@@ -73,7 +71,9 @@ func (p *ProjectModel) GetByID(id int) (*Project, error) {
 		SELECT
 		  pr.id,
 		  pr.title,
+		  pr.slug,
 		  pr.description,
+		  pr.published,
 		  pr.cover_image_id,
 		  m.thumbnail_url,
 		  (SELECT COUNT(*) FROM project_media WHERE project_id = pr.id) as media_count
@@ -84,7 +84,9 @@ func (p *ProjectModel) GetByID(id int) (*Project, error) {
 	`, id).Scan(
 		&project.ID,
 		&project.Title,
+		&project.Slug,
 		&project.Description,
+		&project.Published,
 		&project.CoverImageID,
 		&project.CoverImageURL,
 		&project.MediaCount,
@@ -137,7 +139,7 @@ func (p *ProjectModel) GetMediaPaginated(projectID, limit, offset int) ([]*Media
 
 func (p *ProjectModel) GetAll() ([]map[string]interface{}, error) {
 	rows, err := p.DB.Query(context.Background(), `
-		SELECT pr.id, pr.title, pr.description, pr.cover_image_id, pr.published, m.thumbnail_url
+		SELECT pr.id, pr.title, pr.slug, pr.description, pr.cover_image_id, pr.published, m.thumbnail_url
 		FROM projects pr
 		LEFT JOIN media m ON pr.cover_image_id = m.id
 		ORDER BY pr.id DESC
@@ -150,18 +152,19 @@ func (p *ProjectModel) GetAll() ([]map[string]interface{}, error) {
 	var projects []map[string]interface{}
 	for rows.Next() {
 		var id int
-		var title, description string
+		var title, description, slug string
 		var coverImageID *int
 		var coverImageURL *string
 		var published bool
 
-		if err := rows.Scan(&id, &title, &description, &coverImageID, &published, &coverImageURL); err != nil {
+		if err := rows.Scan(&id, &title, &slug, &description, &coverImageID, &published, &coverImageURL); err != nil {
 			return nil, err
 		}
 
 		projects = append(projects, map[string]interface{}{
 			"ID":            id,
 			"Title":         title,
+			"Slug":          slug,
 			"Description":   description,
 			"CoverImageID":  coverImageID,
 			"CoverImageURL": coverImageURL,
@@ -171,27 +174,46 @@ func (p *ProjectModel) GetAll() ([]map[string]interface{}, error) {
 	return projects, nil
 }
 
-func (p *ProjectModel) Create(title, description string) error {
+func (p *ProjectModel) Create(title, description, slug string) error {
+	if strings.TrimSpace(slug) == "" {
+		return fmt.Errorf("slug cannot be empty")
+	}
 	_, err := p.DB.Exec(context.Background(),
-		`INSERT INTO projects (title, description) VALUES ($1, $2)`,
-		title, description,
+		`INSERT INTO projects (title, description, slug) VALUES ($1, $2, $3)`,
+		title, description, slug,
 	)
 	return err
 }
 
 func (p *ProjectModel) SetCoverImage(projectID, mediaID int) error {
-	_, err := p.DB.Exec(context.Background(),
+	res, err := p.DB.Exec(context.Background(),
 		`UPDATE projects SET cover_image_id = $1 WHERE id = $2`,
 		mediaID, projectID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("no project found with ID %d", projectID)
+	}
+	return nil
 }
 
-func (m *ProjectModel) UpdateBasicInfo(id int, title, description string) error {
-	_, err := m.DB.Exec(context.Background(), `
-		UPDATE projects SET title=$1, description=$2 WHERE id=$3
-	`, title, description, id)
-	return err
+func (m *ProjectModel) UpdateBasicInfo(id int, title, description, slug string) error {
+	if strings.TrimSpace(slug) == "" {
+		return fmt.Errorf("slug cannot be empty")
+	}
+
+	res, err := m.DB.Exec(context.Background(), `
+		UPDATE projects SET title=$1, description=$2, slug=$3 WHERE id=$4
+	`, title, description, slug, id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("no project found with ID %d", id)
+	}
+	return nil
 }
 
 // Get Count of Projects
@@ -209,7 +231,7 @@ func (p *ProjectModel) Count() (int, error) {
 // Get 5 latest projects
 func (p *ProjectModel) GetLatest(limit int) ([]map[string]interface{}, error) {
 	rows, err := p.DB.Query(context.Background(), `
-		SELECT pr.id, pr.title, pr.description, pr.cover_image_id, m.thumbnail_url
+		SELECT pr.id, pr.title, pr.slug, pr.description, pr.cover_image_id, m.thumbnail_url
 		FROM projects pr
 		LEFT JOIN media m ON pr.cover_image_id = m.id
 		WHERE pr.published = TRUE
@@ -224,11 +246,11 @@ func (p *ProjectModel) GetLatest(limit int) ([]map[string]interface{}, error) {
 	var projects []map[string]interface{}
 	for rows.Next() {
 		var id int
-		var title, description string
+		var title, description, slug string
 		var coverImageID *int
 		var coverImageURL *string
 
-		if err := rows.Scan(&id, &title, &description, &coverImageID, &coverImageURL); err != nil {
+		if err := rows.Scan(&id, &title, &slug, &description, &coverImageID, &coverImageURL); err != nil {
 			return nil, err
 		}
 
@@ -242,4 +264,30 @@ func (p *ProjectModel) GetLatest(limit int) ([]map[string]interface{}, error) {
 	}
 
 	return projects, nil
+}
+
+func (p *ProjectModel) GetBySlug(slug string) (*Project, error) {
+	var project Project
+	err := p.DB.QueryRow(context.Background(), `
+		SELECT id, title, slug, description, cover_image_id, published
+		FROM projects WHERE slug = $1`, slug).Scan(
+		&project.ID, &project.Title, &project.Slug, &project.Description, &project.CoverImageID, &project.Published,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &project, nil
+}
+
+func (p *ProjectModel) Delete(id int) error {
+	res, err := p.DB.Exec(context.Background(),
+		`DELETE FROM projects WHERE id = $1`, id,
+	)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("no project found with ID %d", id)
+	}
+	return nil
 }

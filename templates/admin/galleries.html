@@ -72,13 +72,13 @@
                   {{ if .CoverImageURL }}
                   <img
                     src="{{ .CoverImageURL }}"
-                    class="h-24 w-full object-cover rounded"
+                    class="h-24 w-32 object-cover rounded border"
                   />
                   {{ else }}
                   <div
-                    class="h-16 w-16 bg-gray-200 flex items-center justify-center rounded"
+                    class="h-16 w-16 bg-gray-200 flex items-center border justify-center rounded"
                   >
-                    <span class="text-gray-500 text-xs">No Cover</span>
+                    <span class="text-gray-500 text-xs">No Cover </span>
                   </div>
                   {{ end }}
                 </div>

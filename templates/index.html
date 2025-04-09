@@ -1,15 +1,36 @@
-{{define "title"}}Home{{end}}
-<!-- Title-->
-{{ define "content" }}
+{{define "meta"}}
+<title>{{ index .Settings "site_title" }} | {{ .Title}}</title>
+<meta name="description" content="{{ .Description }}" />
+{{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}" />
+{{ end }}
 
+<!-- Open Graph -->
+<meta property="og:title" content="{{ .Title }}" />
+<meta property="og:description" content="{{ .Description }}" />
+{{ if .OGImage }}
+<meta property="og:image" content="{{ .OGImage }}" />
+{{ end }}
+<meta property="og:url" content="{{ .CanonicalURL }}" />
+<meta property="og:type" content="website" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ .Title }}" />
+<meta name="twitter:description" content="{{ .Description }}" />
+{{ if .OGImage }}
+<meta name="twitter:image" content="{{ .OGImage }}" />
+{{ end }}
+<!-- End OGImage If-->
+{{end}}
+<!-- End Meta-->
+
+{{ define "content" }}
 <!-- Gallery Section -->
 {{ if .Gallery }}
-
 <div class="max-w-7xl mx-auto">
   <!-- Gallery Grid -->
   {{ template "media_grid" (dict "Media" .Media ) }}
 </div>
-
 {{ else }}
 <p class="text-gray-500">No featured gallery selected yet.</p>
 {{ end }}

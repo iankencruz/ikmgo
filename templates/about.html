@@ -1,4 +1,29 @@
-{{ define "title" }}About{{ end }}
+{{define "meta"}}
+<title>{{ index .Settings "site_title" }} | {{ .Title}}</title>
+<meta name="description" content="{{ .Description }}" />
+{{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}" />
+{{ end }}
+
+<!-- Open Graph -->
+<meta property="og:title" content="{{ .Title }}" />
+<meta property="og:description" content="{{ .Description }}" />
+{{ if .OGImage }}
+<meta property="og:image" content="{{ .OGImage }}" />
+{{ end }}
+<meta property="og:url" content="{{ .CanonicalURL }}" />
+<meta property="og:type" content="website" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ .Title }}" />
+<meta name="twitter:description" content="{{ .Description }}" />
+{{ if .OGImage }}
+<meta name="twitter:image" content="{{ .OGImage }}" />
+{{ end }}
+<!-- End OGImage If-->
+{{end}}
+<!-- End Meta-->
+
 <!-- Title -->
 {{ define "content" }}
 <section class="py-24 relative">

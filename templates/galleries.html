@@ -41,6 +41,7 @@
         alt="{{ .Title }}"
         class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
       />
+
       {{ else }}
       <div
         class="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500"
@@ -49,9 +50,9 @@
       </div>
       {{ end }}
       <div
-        class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+        class="absolute bg-white w-max h-fit bottom-0 left-0 px-4 rounded-tr-md"
       >
-        <span class="text-white text-lg font-semibold">{{ .Title }}</span>
+        <p>{{ .Title }}</p>
       </div>
     </a>
     {{ end }}

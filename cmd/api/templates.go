@@ -61,6 +61,7 @@ var funcMap = template.FuncMap{
 		}
 		return *s
 	},
+	"split": strings.Split,
 }
 
 func LoadTemplates() error {
@@ -167,6 +168,9 @@ func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl stri
 			data["Settings"] = settings
 		}
 	}
+
+	// ✅ Inject request path
+	data["CurrentPath"] = r.URL.Path
 
 	layout := "base"
 	if strings.Contains(tmpl, "admin/") {

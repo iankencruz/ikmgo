@@ -351,9 +351,9 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 	var heroMedia []*models.Media
 	var restMedia []*models.Media
 
-	if len(media) > 4 {
-		heroMedia = media[:4]
-		restMedia = media[4:]
+	if len(media) > 1 {
+		heroMedia = media[:1]
+		restMedia = media[1:]
 	} else {
 		heroMedia = media
 	}
@@ -369,6 +369,9 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 		"OGImage":      project.CoverImageURL,
 		"HeroMedia":    heroMedia,
 		"Media":        restMedia, // remaining media
+		"ParentTitle":  "Projects",
+		"ParentURL":    "/projects",
+		"CurrentLabel": project.Title,
 	}
 
 	log.Printf("Project Media Count: %d", len(media))
@@ -715,7 +718,7 @@ func (app *Application) SetProjectCoverImage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	thumbURL := "https://" + os.Getenv("VULTR_S3_ENDPOINT") + "/" + app.S3Bucket + "/Uploads/" + media.FileName
+	thumbURL := media.ThumbnailURL
 
 	app.renderPartialHTMX(w, "partials/cover_preview.html", map[string]interface{}{
 		"ProjectID":     projectID,
@@ -1097,8 +1100,13 @@ func (app *Application) GalleryView(w http.ResponseWriter, r *http.Request) {
 		"Title":        gallery.Title,
 		"Description":  gallery.Description,
 		"CanonicalURL": canonical,
+		"OGImage":      gallery.CoverImageURL,
+		"ActiveLink":   "galleries",
 		"Gallery":      gallery,
 		"Media":        media,
+		"ParentURL":    "/galleries",
+		"CurrentLabel": gallery.Title,
+		"ParentTitle":  "Galleries",
 	})
 }
 

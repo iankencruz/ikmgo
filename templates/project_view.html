@@ -26,15 +26,17 @@
 
 <!---->
 {{ define "content" }}
-<div class="max-w-4xl">
+<div class="max-w-7xl mx-auto px-8 py-8">
+  <!-- Breadcrumb -->
+  {{ template "partials/breadcrumb.html" . }}
   <!-- Hero Media Section -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-8">
+  <div class="grid grid-cols-1 gap-2 mb-8">
     {{ range .HeroMedia }}
     <img
       src="{{ .ThumbnailURL }}"
       data-full="{{ .FullURL }}"
       alt="{{ .FileName }}"
-      class="first:col-span-1 first:lg:col-span-3 first:lg:order-last first:lg:h-[32rem] first:pt-8 shadow object-cover w-full aspect-square cursor-pointer"
+      class="h-[32rem] w-full object-cover shadow-md aspect-[16/9]"
       loading="lazy"
     />
     {{ end }}

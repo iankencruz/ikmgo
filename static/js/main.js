@@ -1,15 +1,38 @@
+// 🛡️ Global Sortable safeguard
+if (window.Sortable && typeof Sortable.create === "function") {
+  const originalCreate = Sortable.create;
+
+  Sortable.create = function (el, options) {
+    if (!el || !(el instanceof HTMLElement)) {
+      console.warn("⛔ Sortable.create called with invalid element:", el);
+      console.trace(); // shows where it was triggered
+      return null;
+    }
+    return originalCreate.call(Sortable, el, options);
+  };
+}
+
 // ========================
 // 🔄 Sortable Grid Support
 // ========================
+
 function initSortableGrid() {
   requestAnimationFrame(() => {
     const outer = document.getElementById("sortableGrid");
-    const grid = outer?.querySelector(".sortable");
-    if (!grid) {
-      console.warn("❌ .sortable grid not found inside #sortableGrid");
+
+    if (!outer) {
+      //console.warn("⛔ #sortableGrid not found — Sortable init skipped");
       return;
     }
 
+    const grid = outer.querySelector(".sortable");
+
+    if (!grid || !(grid instanceof HTMLElement)) {
+      //console.warn("⛔ .sortable not found or not an HTMLElement");
+      return;
+    }
+
+    // Prevent duplicate init
     if (grid._sortableInstance) {
       grid._sortableInstance.destroy();
     }
@@ -24,9 +47,8 @@ function initSortableGrid() {
           Number(el.dataset.id),
         );
 
-        const wrapper = grid.closest("#sortableGrid");
-        const galleryID = wrapper?.dataset.gallery;
-        const projectID = wrapper?.dataset.project;
+        const galleryID = outer.dataset.gallery;
+        const projectID = outer.dataset.project;
 
         const payload = { order: ids };
         if (galleryID) payload.gallery_id = Number(galleryID);
@@ -42,13 +64,20 @@ function initSortableGrid() {
         });
       },
     });
+
+    //console.log("✅ Sortable initialized");
   });
 }
 
 // 🔁 Init Sortable after full load + HTMX swaps
 document.addEventListener("DOMContentLoaded", initSortableGrid);
-document.addEventListener("htmx:afterSwap", (event) => {
-  if (document.getElementById("sortableGrid")) initSortableGrid();
+
+document.addEventListener("htmx:afterSwap", () => {
+  setTimeout(() => {
+    if (document.getElementById("sortableGrid")) {
+      initSortableGrid();
+    }
+  }, 50);
 });
 
 // ===========================
@@ -276,3 +305,17 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+function openAboutImageModal() {
+  const modal = document.getElementById("aboutImageModal");
+  if (!modal) return;
+
+  modal.classList.remove("hidden");
+
+  // trigger HTMX fetch if not already loaded
+  const content = modal.querySelector(".modal-content");
+  if (!content.dataset.loaded) {
+    htmx.ajax("GET", "/admin/settings/select-about-image", { target: content });
+    content.dataset.loaded = "true";
+  }
+}

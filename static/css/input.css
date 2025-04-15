@@ -3,7 +3,13 @@
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/forms";
 
-@import url("https://fonts.googleapis.com/css2?family=Inconsolata:wdth,wght@87.5,200..900&display=swap");
+@font-face {
+  font-family: "Inconsolata";
+  src: url("/static/fonts/inconsolata.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 @theme {
   --font-sans: "Inconsolata", sans-serif;

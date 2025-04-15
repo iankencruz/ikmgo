@@ -1,30 +1,35 @@
 
-# Stage 1: Build a static Go binary
-FROM golang:1.23 as builder
+# -------- Build stage --------
+FROM --platform=linux/amd64 golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+# Install git for module fetching
+RUN apk add --no-cache git
+
+# Copy go.mod and download deps
+COPY go.mod ./
+COPY go.sum ./
 RUN go mod download
 
+# Copy source
 COPY . .
 
-# 👇 Fully static binary (no glibc dependencies)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-	go build -ldflags="-w -s" -o server ./cmd/api
+# ✅ Build using correct arch (no GOARCH/GOOS needed here)
+RUN go build -o app ./cmd/api
 
-# Stage 2: Minimal secure image (no glibc, no shell)
-FROM gcr.io/distroless/static:nonroot
+# Ensure binary is executable
+RUN chmod +x /app/app
 
-WORKDIR /
+# -------- Runtime stage --------
+FROM alpine:latest
 
-# Copy the statically compiled binary
-COPY --from=builder /app/server /
+WORKDIR /app
 
-# Copy runtime assets
-COPY --from=builder /app/templates /templates
-COPY --from=builder /app/static /static
+COPY --from=builder /app/app .
 
-USER nonroot:nonroot
-ENTRYPOINT ["/server"]
+EXPOSE 8080
+
+CMD ["./app"]
+
 

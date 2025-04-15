@@ -74,28 +74,29 @@
 
     <div>
       <label class="block font-semibold mb-1">About Me Image</label>
-      <div class="flex items-center gap-4">
-        {{ if index .Settings "about_me_image" }}
-        <img
-          src='{{ index .Settings " about_me_image" }}'
-          class="w-32 h-32 rounded object-cover border border-gray-300"
-        />
-        {{ else }}
-        <div
-          class="w-32 h-32 flex items-center justify-center bg-gray-100 border border-gray-300 text-gray-500 text-sm"
-        >
-          No image
+
+      <div class="flex flex-row justify-between relative">
+        <div id="aboutImagePreview">
+          {{ if (index .Settings "about_me_image") }}
+          <img
+            src='{{ index .Settings "about_me_image" }}'
+            class="w-min h-48 object-cover rounded border border-gray-200"
+          />
+          {{ else }}
+          <div
+            class="w-48 h-48 flex items-center justify-center bg-gray-100 text-gray-400 rounded border"
+          >
+            No image
+          </div>
+          {{ end }}
         </div>
-        {{ end }}
-        <button
-          class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-          hx-get="/admin/settings/select-about-image"
-          hx-target="#modal-content"
-          hx-swap="innerHTML"
-          onclick="document.getElementById('modal').classList.remove('hidden')"
-        >
-          Change Image
-        </button>
+        <div class="h-12 w-full absolute top-2 left-2">
+          <!--prettier-ignore-->
+          {{ template "partials/upload_media_button.html" (dict
+          "ModalURL" "/admin/media/upload-modal?context=settings"
+          "Label" "Upload Media"
+        ) }}
+        </div>
       </div>
     </div>
 

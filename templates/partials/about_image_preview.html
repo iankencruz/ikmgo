@@ -1,9 +1,6 @@
 {{ define "partials/about_image_preview.html" }}
-<div id="aboutImagePreview">
-  <img
-    src="{{ .ImageURL }}"
-    alt="About Me Image"
-    class="w-48 h-48 object-cover rounded border border-gray-300"
-  />
-</div>
+<img
+  src="{{ .ImageURL }}"
+  class="w-full max-w-lg mx-auto rounded shadow object-cover"
+/>
 {{ end }}

@@ -362,6 +362,7 @@ func (app *Application) PublicProjectView(w http.ResponseWriter, r *http.Request
 
 	data := map[string]interface{}{
 		"Title":        project.Title,
+		"ActiveLink":   "projects",
 		"Project":      project,
 		"ProjectID":    project.ID,
 		"CanonicalURL": canonicalURL,
@@ -1311,7 +1312,8 @@ func (app *Application) GetAboutMeImageModal(w http.ResponseWriter, r *http.Requ
 	}
 
 	app.renderPartialHTMX(w, "partials/about_me_image_modal.html", map[string]interface{}{
-		"Media": media,
+		"Media":   media,
+		"Context": "settings",
 	})
 }
 
@@ -1335,7 +1337,6 @@ func (app *Application) SetAboutMeImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Return updated image block
 	app.render(w, r, "partials/about_image_preview.html", map[string]interface{}{
 		"ImageURL": media.ThumbnailURL,
 	})
@@ -1389,9 +1390,16 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 
 	// log.Printf("🧩 UploadMediaModal called with no context (standalone)")
 
+	media, err := app.MediaModel.GetAll()
+	if err != nil {
+		log.Printf("❌ Failed to load media for settings: %v", err)
+		http.Error(w, "Error loading media", http.StatusInternalServerError)
+		return
+	}
+
 	app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
-		"ExistingMedia": nil,
-		"Context":       "standalone",
+		"ExistingMedia": media,
+		"Context":       "settings",
 	})
 }
 

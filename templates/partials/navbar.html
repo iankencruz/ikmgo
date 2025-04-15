@@ -60,9 +60,9 @@
                     href="/"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "home" }}
-                      text-indigo-600
+                      text-amber-600
                     {{ else }}
-                      text-gray-700 hover:text-indigo-600 hover:
+                      text-gray-700 hover:text-amber-600 hover:
                     {{ end }}'
                   >
                     Home
@@ -74,9 +74,9 @@
                     href="/about"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "about" }}
-                      text-indigo-600
+                      text-amber-600
                     {{ else }}
-                      text-gray-700 hover:text-indigo-600 hover:
+                      text-gray-700 hover:text-amber-600 hover:
                     {{ end }}'
                   >
                     About
@@ -88,9 +88,9 @@
                     href="/galleries"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                     {{ if eq .ActiveLink "galleries" }}
-                      text-indigo-600
+                      text-amber-600
                     {{ else }}
-                      text-gray-700 hover:text-indigo-600 hover:
+                      text-gray-700 hover:text-amber-600 hover:
                     {{ end }}'
                   >
                     Galleries
@@ -102,9 +102,9 @@
                     href="/projects"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "projects" }}
-                    text-indigo-600
+                    text-amber-600
                   {{ else }}
-                    text-gray-700 hover:text-indigo-600 hover:
+                    text-gray-700 hover:text-amber-600 hover:
                   {{ end }}'
                   >
                     Projects
@@ -117,9 +117,9 @@
                     href="/contact"
                     class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "contact" }}
-                    text-indigo-600
+                    text-amber-600
                   {{ else }}
-                    text-gray-700 hover:text-indigo-600 hover:
+                    text-gray-700 hover:text-amber-600 hover:
                   {{ end }}'
                   >
                     Contact
@@ -140,10 +140,10 @@
                 href='{{index .Settings "instagram"}}'
                 hx-boost="true"
                 target="_blank"
-                class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
+                class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-amber-600"
               >
                 <svg
-                  class="w-[1.25rem] h-[1.125rem] transition-all duration-500 text-gray-700 group-hover:text-indigo-600"
+                  class="w-[1.25rem] h-[1.125rem] transition-all duration-500 text-gray-700 group-hover:text-amber-600"
                   viewBox="0 0 15 15"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -158,10 +158,10 @@
                 href='{{index .Settings "threads"}}'
                 target="_blank"
                 hx-boost="true"
-                class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
+                class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-amber-600"
               >
                 <svg
-                  class="w-[1.25rem] h-[1.25rem] transition-all duration-500 text-gray-700 group-hover:fill-indigo-600"
+                  class="w-[1.25rem] h-[1.25rem] transition-all duration-500 text-gray-700 group-hover:fill-amber-600"
                   viewBox="0 0 448 512"
                 >
                   <!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
@@ -174,10 +174,10 @@
                 href='{{ index .Settings "youtube" }}'
                 target="_blank"
                 hx-boost="true"
-                class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
+                class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-amber-600"
               >
                 <svg
-                  class="w-[1.25rem] h-[0.875rem] transition-all duration-500 text-gray-700 group-hover:text-indigo-600"
+                  class="w-[1.25rem] h-[0.875rem] transition-all duration-500 text-gray-700 group-hover:text-amber-600"
                   viewBox="0 0 16 12"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -221,9 +221,9 @@
                 href="/"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                 {{ if eq .ActiveLink "home" }}
-                  text-indigo-600
+                  text-amber-600
                 {{ else }}
-                  text-gray-700 hover:text-indigo-600 hover:
+                  text-gray-700 hover:text-amber-600 hover:
                 {{ end }}'
               >
                 Home
@@ -235,9 +235,9 @@
                 href="/about"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "about" }}
-                    text-indigo-600
+                    text-amber-600
                   {{ else }}
-                    text-gray-700 hover:text-indigo-600 hover:
+                    text-gray-700 hover:text-amber-600 hover:
                   {{ end }}'
               >
                 About
@@ -249,9 +249,9 @@
                 href="/galleries"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "galleries" }}
-                    text-indigo-600
+                    text-amber-600
                   {{ else }}
-                    text-gray-700 hover:text-indigo-600 hover:
+                    text-gray-700 hover:text-amber-600 hover:
                   {{ end }}'
               >
                 Galleries
@@ -263,9 +263,9 @@
                 href="/projects"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "projects" }}
-                    text-indigo-600
+                    text-amber-600
                   {{ else }}
-                    text-gray-700 hover:text-indigo-600 hover:
+                    text-gray-700 hover:text-amber-600 hover:
                   {{ end }}'
               >
                 Projects
@@ -278,9 +278,9 @@
                 href="/contact"
                 class='group flex gap-x-3 rounded-md    text-sm/6 font-semibold 
                   {{ if eq .ActiveLink "contact" }}
-                    text-indigo-600
+                    text-amber-600
                   {{ else }}
-                    text-gray-700 hover:text-indigo-600 hover:
+                    text-gray-700 hover:text-amber-600 hover:
                   {{ end }}'
               >
                 Contact
@@ -296,13 +296,14 @@
         <div
           class="flex items-center justify-center flex-col sm:justify-start sm:flex-row"
         >
+          {{if index .Settings "instagram"}}
           <a
             href='{{index .Settings "instagram"}}'
             target="_blank"
-            class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
+            class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-amber-600"
           >
             <svg
-              class="w-[1.25rem] h-[1.125rem] transition-all duration-500 text-gray-700 group-hover:text-indigo-600"
+              class="w-[1.25rem] h-[1.125rem] transition-all duration-500 text-gray-700 group-hover:text-amber-600"
               viewBox="0 0 15 15"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -313,13 +314,16 @@
               ></path>
             </svg>
           </a>
+          {{end}}
+          <!---->
+          {{ if index .Settings "threads"}}
           <a
             href='{{index .Settings "threads"}}'
             target="_blank"
-            class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
+            class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-amber-600"
           >
             <svg
-              class="w-[1.25rem] h-[1.25rem] transition-all duration-500 text-gray-700 group-hover:fill-indigo-600"
+              class="w-[1.25rem] h-[1.25rem] transition-all duration-500 text-gray-700 group-hover:fill-amber-600"
               viewBox="0 0 448 512"
             >
               <!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
@@ -328,13 +332,16 @@
               />
             </svg>
           </a>
+          {{ end }}
+          <!---->
+          {{ if index .Settings "youtube"}}
           <a
             href='{{ index .Settings "youtube" }}'
             target="_blank"
-            class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-indigo-600"
+            class="group w-9 h-9 transition-all duration-500 rounded-full flex justify-center items-center hover:border-amber-600"
           >
             <svg
-              class="w-[1.25rem] h-[0.875rem] transition-all duration-500 text-gray-700 group-hover:text-indigo-600"
+              class="w-[1.25rem] h-[0.875rem] transition-all duration-500 text-gray-700 group-hover:text-amber-600"
               viewBox="0 0 16 12"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -347,6 +354,7 @@
               ></path>
             </svg>
           </a>
+          {{ end }}
         </div>
       </div>
     </nav>

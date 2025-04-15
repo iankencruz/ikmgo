@@ -202,6 +202,13 @@ func (app *Application) renderToWriter(w io.Writer, r *http.Request, tmpl string
 		}
 	}
 
+	if app.SettingsModel != nil {
+		settings, err := app.SettingsModel.GetAll()
+		if err == nil {
+			data["Settings"] = settings
+		}
+	}
+
 	layout := "base"
 	if strings.Contains(tmpl, "admin/") {
 		layout = "base_admin"

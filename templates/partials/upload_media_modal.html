@@ -89,7 +89,6 @@
           hx-on:afterRequest="document.getElementById('media-{{ .ID }}')?.remove()"
         {{ end }}
       >
-        {{ .csrfField }}
 
         <input type="hidden" name="media_id" value="{{ .ID }}" />
         {{ if $.GalleryID }}

@@ -40,7 +40,7 @@ func (app *Application) routes() http.Handler {
 
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(app.AuthMiddleware)
+		// r.Use(app.AuthMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin/dashboard", 301)

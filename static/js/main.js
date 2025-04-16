@@ -145,17 +145,24 @@ document.addEventListener("click", function (event) {
 });
 
 window.switchUploadTab = function (tab) {
+  // Remove styles
   document
     .querySelectorAll(".upload-tab-section")
     .forEach((el) => el.classList.add("hidden"));
-  document
-    .querySelectorAll(".upload-tab-btn")
-    .forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(".upload-tab-btn").forEach((btn) => {
+    btn.classList.remove("border-b-2", "border-amber-500", "text-amber-600");
+    btn.classList.add("border-b-2", "border-transparent", "text-gray-500");
+  });
 
+  // Activate section
   const target = document.getElementById(`upload-tab-${tab}`);
-  if (target) {
-    target.classList.remove("hidden");
-    event.target.classList.add("active");
+  if (target) target.classList.remove("hidden");
+
+  // Highlight active tab
+  const tabBtn = document.querySelector(`.upload-tab-btn[onclick*="${tab}"]`);
+  if (tabBtn) {
+    tabBtn.classList.remove("border-transparent", "text-gray-500");
+    tabBtn.classList.add("border-amber-500", "text-amber-600");
   }
 };
 
@@ -319,3 +326,67 @@ function openAboutImageModal() {
     content.dataset.loaded = "true";
   }
 }
+
+function handleFileSelect(event) {
+  const input = event.target;
+  const previewGrid = document.getElementById("fileList");
+
+  if (!input.files || input.files.length === 0) {
+    previewGrid.classList.add("hidden");
+    previewGrid.innerHTML = "";
+    return;
+  }
+
+  previewGrid.classList.remove("hidden");
+  previewGrid.innerHTML = "";
+
+  Array.from(input.files).forEach((file) => {
+    const container = document.createElement("div");
+    container.className = "border rounded shadow-sm p-2 text-center";
+
+    const name = document.createElement("p");
+    name.className = "text-xs truncate mt-2 text-gray-700";
+    name.textContent = file.name;
+
+    if (file.type.startsWith("image/")) {
+      const img = document.createElement("img");
+      img.className = "w-full h-32 object-cover rounded";
+      img.alt = file.name;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      container.appendChild(img);
+    } else {
+      const icon = document.createElement("div");
+      icon.textContent = "📁";
+      icon.className = "text-4xl text-gray-400";
+      container.appendChild(icon);
+    }
+
+    container.appendChild(name);
+    previewGrid.appendChild(container);
+  });
+}
+
+// Optional: Add visual border highlight on drag
+document.addEventListener("DOMContentLoaded", () => {
+  const dropzone = document.getElementById("dropzone");
+
+  if (!dropzone) return;
+
+  ["dragenter", "dragover"].forEach((evt) => {
+    dropzone.addEventListener(evt, () => {
+      dropzone.classList.add("border-amber-500", "bg-amber-50");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((evt) => {
+    dropzone.addEventListener(evt, () => {
+      dropzone.classList.remove("border-amber-500", "bg-amber-50");
+    });
+  });
+});

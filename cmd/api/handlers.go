@@ -1343,64 +1343,156 @@ func (app *Application) SetAboutMeImage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request) {
-	projectIDStr := r.URL.Query().Get("project_id")
-	galleryIDStr := r.URL.Query().Get("gallery_id")
 
-	if projectIDStr != "" {
+	pageStr := r.URL.Query().Get("page")
+
+	page := 0
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+			page = p
+		}
+	}
+	limit := 10
+	offset := page * limit
+
+	if projectIDStr := r.URL.Query().Get("project_id"); projectIDStr != "" {
 		projectID, _ := strconv.Atoi(projectIDStr)
-		// log.Printf("🧩 UploadMediaModal called with project_id: %d", projectID)
 
-		existingMedia, err := app.MediaModel.GetUnlinkedMedia("project_media", "project_id", projectID)
+		queryString := fmt.Sprintf("project_id=%d", projectID)
+
+		allMedia, err := app.MediaModel.GetUnlinkedMedia("project_media", "project_id", projectID)
 		if err != nil {
-			log.Printf("❌ Failed to load unlinked media for project %d: %v", projectID, err)
 			http.Error(w, "Error loading media", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("📦 Passing %d unlinked media to project modal", len(existingMedia))
+		total := len(allMedia)
+		hasNext := total > offset+limit
+		paginated := allMedia
+		if total > offset {
+			end := offset + limit
+			if end > total {
+				end = total
+			}
+			paginated = allMedia[offset:end]
+		}
 
-		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]interface{}{
-			"ProjectID":     projectID,
-			"ExistingMedia": existingMedia,
-			"Context":       "project",
+		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
+			"ExistingMedia":     paginated,
+			"Context":           "project",
+			"ProjectID":         projectID,
+			"Page":              page,
+			"HasNext":           hasNext,
+			"Limit":             limit,
+			"TotalPages":        int(math.Ceil(float64(total) / float64(limit))),
+			"TotalCount":        len(allMedia),
+			"QueryString":       queryString,
+			"PaginationBaseURL": "/admin/media/upload-modal",
+			"ActiveTab":         "existing",
 		})
 		return
 	}
 
-	if galleryIDStr != "" {
+	if galleryIDStr := r.URL.Query().Get("gallery_id"); galleryIDStr != "" {
 		galleryID, _ := strconv.Atoi(galleryIDStr)
-		// log.Printf("🧩 UploadMediaModal called with gallery_id: %d", galleryID)
 
-		existingMedia, err := app.MediaModel.GetUnlinkedMedia("gallery_media", "gallery_id", galleryID)
+		queryString := fmt.Sprintf("gallery_id=%d", galleryID)
+
+		allMedia, err := app.MediaModel.GetUnlinkedMedia("gallery_media", "gallery_id", galleryID)
 		if err != nil {
 			log.Printf("❌ Failed to load unlinked media for gallery %d: %v", galleryID, err)
 			http.Error(w, "Error loading media", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("📦 Passing %d unlinked media to gallery modal", len(existingMedia))
+		total := len(allMedia)
+		hasNext := total > offset+limit
+		paginated := allMedia
+		if total > offset {
+			end := offset + limit
+			if end > total {
+				end = total
+			}
+			paginated = allMedia[offset:end]
+		} else {
+			paginated = []*models.Media{}
+		}
 
 		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
-			"GalleryID":     galleryID,
-			"ExistingMedia": existingMedia,
-			"Context":       "gallery",
+			"ExistingMedia":     paginated,
+			"Context":           "gallery",
+			"GalleryID":         galleryID,
+			"Page":              page,
+			"HasNext":           hasNext,
+			"Limit":             limit,
+			"TotalPages":        int(math.Ceil(float64(total) / float64(limit))),
+			"TotalCount":        len(allMedia),
+			"PaginationBaseURL": "/admin/media/upload-modal",
+			"QueryString":       queryString,
+			"ActiveTab":         "existing",
 		})
 		return
 	}
 
-	// log.Printf("🧩 UploadMediaModal called with no context (standalone)")
+	// Settings context
+	if r.URL.Query().Get("context") == "settings" {
+
+		QueryString := fmt.Sprintf("gallery_id=%d", "settings")
+
+		media, err := app.MediaModel.GetMediaNotLinkedToProjectsOrGalleries()
+		if err != nil {
+			log.Printf("❌ Failed to load settings-context media: %v", err)
+			http.Error(w, "Error loading media", http.StatusInternalServerError)
+			return
+		}
+
+		total := len(media)
+		hasNext := total > offset+limit
+		paginated := media
+		if total > offset {
+			end := offset + limit
+			if end > total {
+				end = total
+			}
+			paginated = media[offset:end]
+		} else {
+			paginated = []*models.Media{}
+		}
+
+		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
+			"ExistingMedia": paginated,
+			"Context":       "settings",
+			"Page":          page,
+			"HasNext":       hasNext,
+			"Limit":         limit,
+			"TotalPages":    int(math.Ceil(float64(total) / float64(limit))),
+			"TotalCount":    total,
+			"QueryString":   QueryString,
+			"ActiveTab":     "existing",
+		})
+
+	}
 
 	media, err := app.MediaModel.GetAll()
 	if err != nil {
-		log.Printf("❌ Failed to load media for settings: %v", err)
+		log.Printf("❌ Failed to load all media for modal: %v", err)
 		http.Error(w, "Error loading media", http.StatusInternalServerError)
 		return
 	}
 
 	app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
-		"ExistingMedia": media,
-		"Context":       "settings",
+		"ExistingMedia":     media,
+		"Context":           "media", // or "standalone"
+		"Page":              0,
+		"HasNext":           false,
+		"Limit":             10,
+		"TotalPages":        1,
+		"TotalCount":        len(media),
+		"PaginationBaseURL": "/admin/media/upload-modal",
+		"QueryString":       "",
+		"ActiveTab":         "upload",
 	})
+
 }
 
 func (app *Application) ProjectInfoView(w http.ResponseWriter, r *http.Request) {

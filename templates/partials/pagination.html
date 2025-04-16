@@ -12,9 +12,10 @@
     1 }} {{ $next := add $page 1 }}
 
     <button
-      hx-get="{{ .PaginationBaseURL }}?page={{ $prev }}"
+      hx-get="{{ .PaginationBaseURL }}?{{ .QueryString }}&page={{ $prev }}"
       hx-target="{{ .PaginationTarget }}"
       hx-swap="outerHTML"
+      hx-on:afterSwap="switchUploadTab('existing')"
       {{
       if
       eq
@@ -32,9 +33,10 @@
     {{ range $i := seq 0 (sub $totalPages 1) }} {{ if or (le $i 2) (eq $i (sub
     $totalPages 1)) (and (ge $i (sub $page 1)) (le $i (add $page 1))) }}
     <button
-      hx-get="{{ $.PaginationBaseURL }}?page={{ $i }}"
+      hx-get="{{ $.PaginationBaseURL }}?{{ $.QueryString }}&page={{ $i }}"
       hx-target="{{ $.PaginationTarget }}"
       hx-swap="outerHTML"
+      hx-on:afterSwap="switchUploadTab('existing')"
       class="relative hidden items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus:z-20 focus:outline-offset-0 md:inline-flex
       {{ if eq $i $page }}bg-indigo-600 text-white
       {{ else }}hover:bg-gray-200 text-black
@@ -47,9 +49,10 @@
     {{ end }} {{ end }}
 
     <button
-      hx-get="{{ .PaginationBaseURL }}?page={{ $next }}"
+      hx-get="{{ .PaginationBaseURL }}?{{ .QueryString }}&page={{ $next }}"
       hx-target="{{ .PaginationTarget }}"
       hx-swap="outerHTML"
+      hx-on:afterSwap="switchUploadTab('existing')"
       {{
       if
       not

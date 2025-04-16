@@ -468,3 +468,33 @@ func (m *MediaModel) GetLatest(limit int) ([]*Media, error) {
 
 	return mediaList, nil
 }
+
+func (m *MediaModel) GetMediaNotLinkedToProjectsOrGalleries() ([]*Media, error) {
+	query := `
+	SELECT id, file_name, full_url, thumbnail_url, mime_type, embed_url
+	FROM media
+	WHERE id NOT IN (SELECT media_id FROM gallery_media)
+	  AND id NOT IN (SELECT media_id FROM project_media)
+	ORDER BY id DESC
+	`
+
+	rows, err := m.DB.Query(context.Background(), query)
+	if err != nil {
+		log.Printf("❌ Failed to get unlinked media: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var mediaList []*Media
+	for rows.Next() {
+		var m Media
+		err := rows.Scan(&m.ID, &m.FileName, &m.FullURL, &m.ThumbnailURL, &m.MimeType, &m.EmbedURL)
+		if err != nil {
+			log.Printf("❌ Scan error: %v", err)
+			continue
+		}
+		mediaList = append(mediaList, &m)
+	}
+
+	return mediaList, nil
+}

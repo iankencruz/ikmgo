@@ -61,7 +61,9 @@ var funcMap = template.FuncMap{
 		}
 		return *s
 	},
-	"split": strings.Split,
+	"split":    strings.Split,
+	"contains": strings.Contains, // 👈 Add this
+
 }
 
 func LoadTemplates() error {
@@ -123,7 +125,9 @@ func LoadTemplates() error {
 
 	// ✅ 2. Load partials as root templates (individually)
 	for _, partialPath := range partials {
-		t, err := template.New(filepath.Base(partialPath)).Funcs(funcMap).ParseFiles(partialPath)
+		files := append([]string{partialPath}, partials...) // ✅ include all partials
+
+		t, err := template.New(filepath.Base(partialPath)).Funcs(funcMap).ParseFiles(files...)
 		if err != nil {
 			log.Printf("❌ Error loading partial %s: %v", partialPath, err)
 			continue

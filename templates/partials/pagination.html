@@ -1,30 +1,28 @@
 {{ define "pagination" }}
 <div class="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-  <!-- prettier-ignore -->
-
   <p class="text-sm text-gray-500">
-    Showing {{ add (mul .Page .Limit) 1 }} to
-    {{ min (mul (add .Page 1) .Limit) .MediaCount }} of {{ .MediaCount }} results
+    Showing {{ add (mul .Page .Limit) 1 }} to {{ min (mul (add .Page 1) .Limit)
+    .MediaCount }} of {{ .MediaCount }} results
   </p>
 
   <div class="isolate inline-flex -space-x-px rounded-md shadow-xs">
     {{ $page := .Page }} {{ $totalPages := .TotalPages }} {{ $prev := sub $page
-    1 }} {{ $next := add $page 1 }}
+    1 }} {{ $next := add $page 1 }} {{ $sep := "?" }} {{ if contains
+    .PaginationBaseURL "?" }} {{ $sep = "&" }} {{ end }}
 
     <button
-      hx-get="{{ .PaginationBaseURL }}?page={{ $prev }}"
-      hx-target="{{ .PaginationTarget }}"
-      hx-swap="outerHTML"
+      hx-get="{{ .PaginationBaseURL }}{{ $sep }}page={{ $prev }}"
+      hx-target="#upload-tab-existing"
+      hx-swap="innerHTML"
       {{
       if
       eq
       $page
       0
-      }}disabled
-      {{
+      }}disabled{{
       end
       }}
-      class="relative inline-flex items-center rounded-l-md px-2.5 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+      class="relative inline-flex items-center rounded-l-md px-2.5 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
     >
       &larr;
     </button>
@@ -32,13 +30,11 @@
     {{ range $i := seq 0 (sub $totalPages 1) }} {{ if or (le $i 2) (eq $i (sub
     $totalPages 1)) (and (ge $i (sub $page 1)) (le $i (add $page 1))) }}
     <button
-      hx-get="{{ $.PaginationBaseURL }}?page={{ $i }}"
-      hx-target="{{ $.PaginationTarget }}"
-      hx-swap="outerHTML"
-      class="relative hidden items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus:z-20 focus:outline-offset-0 md:inline-flex
-      {{ if eq $i $page }}bg-indigo-600 text-white
-      {{ else }}hover:bg-gray-200 text-black
-      {{ end }}"
+      hx-get="{{ $.PaginationBaseURL }}{{ $sep }}page={{ $i }}"
+      hx-target="#upload-tab-existing"
+      hx-swap="innerHTML"
+      class="relative hidden items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset md:inline-flex
+            {{ if eq $i $page }}bg-indigo-600 text-white{{ else }}hover:bg-gray-200 text-black{{ end }}"
     >
       {{ add $i 1 }}
     </button>
@@ -47,18 +43,17 @@
     {{ end }} {{ end }}
 
     <button
-      hx-get="{{ .PaginationBaseURL }}?page={{ $next }}"
-      hx-target="{{ .PaginationTarget }}"
-      hx-swap="outerHTML"
+      hx-get="{{ .PaginationBaseURL }}{{ $sep }}page={{ $next }}"
+      hx-target="#upload-tab-existing"
+      hx-swap="innerHTML"
       {{
       if
       not
       .HasNext
-      }}disabled
-      {{
+      }}disabled{{
       end
       }}
-      class="relative inline-flex items-center rounded-r-md px-2.5 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+      class="relative inline-flex items-center rounded-r-md px-2.5 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
     >
       &rarr;
     </button>

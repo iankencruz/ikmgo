@@ -468,3 +468,38 @@ func (m *MediaModel) GetLatest(limit int) ([]*Media, error) {
 
 	return mediaList, nil
 }
+
+func (m *MediaModel) GetUnlinkedMediaPaginated(joinTable, foreignKey string, id, limit, offset int) ([]*Media, int, error) {
+	query := fmt.Sprintf(`
+		SELECT id, file_name, full_url, thumbnail_url
+		FROM media
+		WHERE id NOT IN (
+			SELECT media_id FROM %s WHERE %s = $1
+		)
+		ORDER BY id DESC
+		LIMIT $2 OFFSET $3`, joinTable, foreignKey)
+
+	rows, err := m.DB.Query(context.Background(), query, id, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var media []*Media
+	for rows.Next() {
+		var m Media
+		if err := rows.Scan(&m.ID, &m.FileName, &m.FullURL, &m.ThumbnailURL); err != nil {
+			continue
+		}
+		media = append(media, &m)
+	}
+
+	var total int
+	countQuery := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM media
+		WHERE id NOT IN (SELECT media_id FROM %s WHERE %s = $1)`, joinTable, foreignKey)
+	err = m.DB.QueryRow(context.Background(), countQuery, id).Scan(&total)
+
+	return media, total, err
+}

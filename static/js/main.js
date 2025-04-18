@@ -1,3 +1,11 @@
+document.addEventListener("DOMContentLoaded", () => {
+  const defaultTab = document
+    .getElementById("upload-tab-upload")
+    ?.classList.contains("block")
+    ? "upload"
+    : "existing";
+  switchUploadTab(defaultTab);
+});
 // 🛡️ Global Sortable safeguard
 if (window.Sortable && typeof Sortable.create === "function") {
   const originalCreate = Sortable.create;
@@ -144,7 +152,9 @@ document.addEventListener("click", function (event) {
   }
 });
 
-window.switchUploadTab = function (tab) {
+window.switchUploadTab = function (tab, event) {
+  if (event) event.stopPropagation();
+
   document
     .querySelectorAll(".upload-tab-section")
     .forEach((el) => el.classList.add("hidden"));
@@ -155,7 +165,7 @@ window.switchUploadTab = function (tab) {
   const target = document.getElementById(`upload-tab-${tab}`);
   if (target) {
     target.classList.remove("hidden");
-    event.target.classList.add("active");
+    event?.target?.classList?.add("active");
   }
 };
 
@@ -317,5 +327,187 @@ function openAboutImageModal() {
   if (!content.dataset.loaded) {
     htmx.ajax("GET", "/admin/settings/select-about-image", { target: content });
     content.dataset.loaded = "true";
+  }
+}
+
+function handleFileSelect(event) {
+  const input = event.target;
+  const previewGrid = document.getElementById("fileList");
+
+  if (!input.files || input.files.length === 0) {
+    previewGrid.classList.add("hidden");
+    previewGrid.innerHTML = "";
+    return;
+  }
+
+  previewGrid.classList.remove("hidden");
+  previewGrid.innerHTML = "";
+
+  Array.from(input.files).forEach((file) => {
+    const container = document.createElement("div");
+    container.className = "border rounded shadow-sm p-2 text-center";
+
+    const name = document.createElement("p");
+    name.className = "text-xs truncate mt-2 text-gray-700";
+    name.textContent = file.name;
+
+    if (file.type.startsWith("image/")) {
+      const img = document.createElement("img");
+      img.className = "w-full h-32 object-cover rounded";
+      img.alt = file.name;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      container.appendChild(img);
+    } else {
+      const icon = document.createElement("div");
+      icon.textContent = "📁";
+      icon.className = "text-4xl text-gray-400";
+      container.appendChild(icon);
+    }
+
+    container.appendChild(name);
+    previewGrid.appendChild(container);
+  });
+}
+
+// Optional: Add visual border highlight on drag
+document.addEventListener("DOMContentLoaded", () => {
+  const dropzone = document.getElementById("dropzone");
+
+  if (!dropzone) return;
+
+  ["dragenter", "dragover"].forEach((evt) => {
+    dropzone.addEventListener(evt, () => {
+      dropzone.classList.add("border-amber-500", "bg-amber-50");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((evt) => {
+    dropzone.addEventListener(evt, () => {
+      dropzone.classList.remove("border-amber-500", "bg-amber-50");
+    });
+  });
+});
+
+// =====================
+// 📤 Upload Controllers
+
+let selectedFiles = [];
+let uploadControllers = {};
+
+function previewFiles(event) {
+  const files = event.target.files;
+  const fileList = document.getElementById("fileList");
+  fileList.innerHTML = "";
+
+  selectedFiles = {};
+
+  if (files.length > 0) fileList.classList.remove("hidden");
+
+  for (const file of files) {
+    const fileId = crypto.randomUUID();
+
+    selectedFiles[fileId] = file;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const block = document.createElement("div");
+      block.id = `file-${fileId}`;
+      block.className = "relative border rounded-lg p-2 shadow-sm bg-white";
+
+      block.innerHTML = `
+        <div class="flex flex-col gap-2">
+          <div class="relative aspect-square overflow-hidden rounded border w-24 h-24">
+            <img src="${e.target.result}" class="object-cover w-full h-full" />
+            <button onclick="cancelUpload('${fileId}')" class="absolute top-1 right-1 text-sm text-white bg-red-500 rounded-full px-1">&times;</button>
+          </div>
+          <p class="text-xs text-gray-700 truncate">${file.name}</p>
+          <p id="status-${fileId}" class="text-xs text-gray-500">Ready to upload</p>
+          <div id="progress-container-${fileId}" class="hidden">
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div id="progress-${fileId}" class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      fileList.appendChild(block);
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function startUpload() {
+  const projectId = document.getElementById("upload-project-id")?.value;
+  const galleryId = document.getElementById("upload-gallery-id")?.value;
+
+  console.log("projectId:", projectId, "galleryId:", galleryId);
+
+  Object.entries(selectedFiles).forEach(([fileId, file]) => {
+    const formData = new FormData();
+    formData.append("files[]", file);
+
+    if (projectId) formData.append("project_id", projectId);
+    if (galleryId) formData.append("gallery_id", galleryId);
+
+    // Show progress bar
+    const progressContainer = document.getElementById(
+      `progress-container-${fileId}`,
+    );
+    if (progressContainer) {
+      progressContainer.classList.remove("hidden");
+    }
+
+    const status = document.getElementById(`status-${fileId}`);
+    if (status) status.innerText = "Uploading...";
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/admin/media/upload", true);
+
+    // Update progress bar
+    xhr.upload.onprogress = function (e) {
+      if (e.lengthComputable) {
+        const percent = (e.loaded / e.total) * 100;
+        const progressBar = document.getElementById(`progress-${fileId}`);
+        if (progressBar) {
+          progressBar.style.width = `${percent.toFixed(0)}%`;
+        }
+      }
+    };
+
+    // On upload complete
+    xhr.onload = function () {
+      if (status) {
+        if (xhr.status === 200) {
+          status.innerText = "Completed";
+
+          console.log("🚀 Response HTML:", xhr.responseText);
+          const sortable = document.querySelector(".sortable");
+          if (sortable && xhr.responseText.trim() !== "") {
+            sortable.insertAdjacentHTML("beforeend", xhr.responseText);
+          }
+        } else {
+          status.innerText = "Failed";
+        }
+      }
+    };
+
+    for (let [key, value] of formData.entries()) {
+      console.log("🧾 FormData:", key, value);
+    }
+    xhr.send(formData);
+  });
+}
+
+function cancelUpload(fileId) {
+  const xhr = uploadControllers[fileId];
+  if (xhr) {
+    xhr.abort();
+    delete uploadControllers[fileId];
   }
 }

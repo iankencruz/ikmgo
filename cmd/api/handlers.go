@@ -842,8 +842,7 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	files := r.MultipartForm.File["files"]
 	if len(files) == 0 {
-		http.Error(w, "No files uploaded", http.StatusBadRequest)
-		return
+		files = r.MultipartForm.File["files[]"] // fallback to match frontend
 	}
 
 	var outputBuffer bytes.Buffer
@@ -952,7 +951,13 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 			ThumbnailURL: thumbURL,
 			FullURL:      fullURL,
 		}
-		app.renderPartialHTMX(&outputBuffer, "partials/media_item.html", media)
+		fmt.Printf("Rendering media item: %+v\n", media)
+
+		app.renderPartialHTMX(w, "partials/media_item.html", map[string]any{
+			"Media":     media,
+			"ProjectID": projectID,
+			"GalleryID": galleryID,
+		})
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -1345,61 +1350,101 @@ func (app *Application) SetAboutMeImage(w http.ResponseWriter, r *http.Request) 
 func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request) {
 	projectIDStr := r.URL.Query().Get("project_id")
 	galleryIDStr := r.URL.Query().Get("gallery_id")
+	contextParam := r.URL.Query().Get("context")
+
+	pageStr := r.URL.Query().Get("page")
+	page := 0
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+			page = p
+		}
+	}
+	limit := 8
+	offset := page * limit
+
+	var existingMedia []*models.Media
+	var mediaCount int
+	var err error
 
 	if projectIDStr != "" {
 		projectID, _ := strconv.Atoi(projectIDStr)
-		// log.Printf("🧩 UploadMediaModal called with project_id: %d", projectID)
-
-		existingMedia, err := app.MediaModel.GetUnlinkedMedia("project_media", "project_id", projectID)
-		if err != nil {
-			log.Printf("❌ Failed to load unlinked media for project %d: %v", projectID, err)
-			http.Error(w, "Error loading media", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("📦 Passing %d unlinked media to project modal", len(existingMedia))
-
-		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]interface{}{
-			"ProjectID":     projectID,
-			"ExistingMedia": existingMedia,
-			"Context":       "project",
-		})
-		return
-	}
-
-	if galleryIDStr != "" {
+		existingMedia, mediaCount, err = app.MediaModel.GetUnlinkedMediaPaginated("project_media", "project_id", projectID, limit+1, offset)
+	} else if galleryIDStr != "" {
 		galleryID, _ := strconv.Atoi(galleryIDStr)
-		// log.Printf("🧩 UploadMediaModal called with gallery_id: %d", galleryID)
-
-		existingMedia, err := app.MediaModel.GetUnlinkedMedia("gallery_media", "gallery_id", galleryID)
+		existingMedia, mediaCount, err = app.MediaModel.GetUnlinkedMediaPaginated("gallery_media", "gallery_id", galleryID, limit+1, offset)
+	} else if contextParam == "standalone" {
+		existingMedia, err = app.MediaModel.GetPaginated(limit+1, offset)
 		if err != nil {
-			log.Printf("❌ Failed to load unlinked media for gallery %d: %v", galleryID, err)
+			log.Printf("❌ Failed to load media: %v", err)
 			http.Error(w, "Error loading media", http.StatusInternalServerError)
 			return
 		}
-
-		log.Printf("📦 Passing %d unlinked media to gallery modal", len(existingMedia))
-
-		app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
-			"GalleryID":     galleryID,
-			"ExistingMedia": existingMedia,
-			"Context":       "gallery",
-		})
-		return
+		mediaCount, err = app.MediaModel.Count()
+		if err != nil {
+			log.Printf("❌ Failed to count media: %v", err)
+			http.Error(w, "Error counting media", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		existingMedia, err = app.MediaModel.GetPaginated(limit+1, offset)
+		if err != nil {
+			log.Printf("❌ Failed to load media: %v", err)
+			http.Error(w, "Error loading media", http.StatusInternalServerError)
+			return
+		}
+		mediaCount, err = app.MediaModel.Count()
+		if err != nil {
+			log.Printf("❌ Failed to count media: %v", err)
+			http.Error(w, "Error counting media", http.StatusInternalServerError)
+			return
+		}
 	}
-
-	// log.Printf("🧩 UploadMediaModal called with no context (standalone)")
-
-	media, err := app.MediaModel.GetAll()
 	if err != nil {
-		log.Printf("❌ Failed to load media for settings: %v", err)
+		log.Printf("❌ Failed to load media: %v", err)
 		http.Error(w, "Error loading media", http.StatusInternalServerError)
 		return
 	}
 
+	// ---- existing pagination calculation ----
+	hasNext := len(existingMedia) > limit
+	if hasNext {
+		existingMedia = existingMedia[:limit]
+	}
+
+	totalPages := int(math.Ceil(float64(mediaCount) / float64(limit)))
+
+	context := "standalone"
+	if galleryIDStr != "" {
+		context = "gallery"
+	} else if projectIDStr != "" {
+		context = "project"
+	} else if contextParam == "settings" {
+		context = "settings"
+	}
+
+	// ---- NEW Pagination BaseURL logic ----
+	q := r.URL.Query()
+	q.Del("page") // Remove existing page param
+	encodedParams := q.Encode()
+
+	paginationBaseURL := r.URL.Path
+	if encodedParams != "" {
+		paginationBaseURL += "?" + encodedParams
+	}
+
 	app.renderPartialHTMX(w, "partials/upload_media_modal.html", map[string]any{
-		"ExistingMedia": media,
-		"Context":       "settings",
+		"ExistingMedia":     existingMedia,
+		"Context":           context,
+		"ProjectID":         projectIDStr,
+		"GalleryID":         galleryIDStr,
+		"ActiveTab":         "existing",
+		"Page":              page,
+		"Limit":             limit,
+		"HasNext":           hasNext,
+		"TotalPages":        totalPages,
+		"MediaCount":        mediaCount,
+		"PaginationBaseURL": paginationBaseURL,
+		"PaginationTarget":  "#upload-tab-existing",
 	})
 }
 

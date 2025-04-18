@@ -1,5 +1,7 @@
 {{ define "pagination" }}
-<div class="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+<div
+  class="pagination-bar flex mt-6 flex-col md:flex-row justify-between items-center gap-4"
+>
   <p class="text-sm text-gray-500">
     Showing {{ add (mul .Page .Limit) 1 }} to {{ min (mul (add .Page 1) .Limit)
     .MediaCount }} of {{ .MediaCount }} results
@@ -12,7 +14,7 @@
 
     <button
       hx-get="{{ .PaginationBaseURL }}{{ $sep }}page={{ $prev }}"
-      hx-target="#upload-tab-existing"
+      hx-target="{{ $.Target }}"
       hx-swap="innerHTML"
       {{
       if
@@ -31,7 +33,7 @@
     $totalPages 1)) (and (ge $i (sub $page 1)) (le $i (add $page 1))) }}
     <button
       hx-get="{{ $.PaginationBaseURL }}{{ $sep }}page={{ $i }}"
-      hx-target="#upload-tab-existing"
+      hx-target="{{ $.Target }}"
       hx-swap="innerHTML"
       class="relative hidden items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset md:inline-flex
             {{ if eq $i $page }}bg-indigo-600 text-white{{ else }}hover:bg-gray-200 text-black{{ end }}"
@@ -44,7 +46,7 @@
 
     <button
       hx-get="{{ .PaginationBaseURL }}{{ $sep }}page={{ $next }}"
-      hx-target="#upload-tab-existing"
+      hx-target="{{ $.Target }}"
       hx-swap="innerHTML"
       {{
       if

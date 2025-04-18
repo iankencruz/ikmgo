@@ -63,7 +63,8 @@
   <!-- Info Tab -->
   <div id="info" class="tab-pane block space-y-4">
     <div>
-      <label class="block font-semibold">Website Title</label>
+      <h3 class="text-lg font-semibold mb-2">Website Info</h3>
+      <label class="block font-semibold">Title</label>
       <input
         type="text"
         name="site_title"
@@ -115,6 +116,7 @@
 
   <!-- Socials Tab -->
   <div id="socials" class="tab-pane hidden space-y-4">
+    <h3 class="text-lg font-semibold mb-2">Social Media Links</h3>
     <div>
       <label class="block font-semibold">Threads URL</label>
       <input
@@ -151,28 +153,4 @@
   </button>
 </form>
 
-<script>
-  function switchToTab(id, e = null) {
-    if (e) e.preventDefault();
-
-    document
-      .querySelectorAll(".tab-pane")
-      .forEach((pane) => pane.classList.add("hidden"));
-    document.getElementById(id)?.classList.remove("hidden");
-
-    document.querySelectorAll(".tab-link").forEach((link) => {
-      link.classList.remove("border-indigo-500", "text-indigo-600");
-      link.classList.add("border-transparent", "text-gray-500");
-    });
-
-    document.querySelectorAll(".tab-link").forEach((link) => {
-      if (link.textContent.trim().toLowerCase() === id) {
-        link.classList.add("border-indigo-500", "text-indigo-600");
-        link.classList.remove("border-transparent", "text-gray-500");
-      }
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", () => switchToTab("info"));
-</script>
 {{ end }}

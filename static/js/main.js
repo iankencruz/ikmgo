@@ -152,21 +152,27 @@ document.addEventListener("click", function (event) {
   }
 });
 
-window.switchUploadTab = function (tab, event) {
-  if (event) event.stopPropagation();
+window.switchUploadTab = function (tab, event = null) {
+  if (event) event.preventDefault();
 
+  // Hide all tab content sections
   document
     .querySelectorAll(".upload-tab-section")
     .forEach((el) => el.classList.add("hidden"));
-  document
-    .querySelectorAll(".upload-tab-btn")
-    .forEach((el) => el.classList.remove("active"));
 
-  const target = document.getElementById(`upload-tab-${tab}`);
-  if (target) {
-    target.classList.remove("hidden");
-    event?.target?.classList?.add("active");
-  }
+  // Show the selected tab
+  document.getElementById(`upload-tab-${tab}`)?.classList.remove("hidden");
+
+  // Reset tab button styles
+  document.querySelectorAll(".upload-tab-btn").forEach((btn) => {
+    btn.classList.remove("border-amber-500", "text-amber-600", "border-b-2");
+    btn.classList.add("border-transparent", "text-gray-500");
+
+    if (btn.dataset.tab === tab) {
+      btn.classList.add("border-amber-500", "text-amber-600", "border-b-2");
+      btn.classList.remove("border-transparent", "text-gray-500");
+    }
+  });
 };
 
 // 🧼 Clean up modal after linking media
@@ -248,24 +254,29 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
 // =====================
 // 🗂️ Tab Switching
 // =====================
+
 function switchToTab(tabName, event = null) {
   if (event) event.preventDefault();
 
-  document
-    .querySelectorAll(".tab-pane")
-    .forEach((pane) => pane.classList.add("hidden"));
+  // Hide all tab content panels
+  document.querySelectorAll(".tab-pane").forEach((pane) => {
+    pane.classList.add("hidden");
+  });
 
+  // Show the selected tab pane
   document.getElementById(tabName)?.classList.remove("hidden");
 
+  // Reset all tab links
   document.querySelectorAll(".tab-link").forEach((link) => {
     link.classList.remove("border-indigo-500", "text-indigo-600");
     link.classList.add("border-transparent", "text-gray-500");
   });
 
-  document.querySelectorAll(`.tab-link`).forEach((link) => {
-    if (link.textContent.trim() === getTabLabel(tabName)) {
-      link.classList.add("border-indigo-500", "text-indigo-600");
+  // Activate the current tab link
+  document.querySelectorAll(".tab-link").forEach((link) => {
+    if (link.textContent.trim().toLowerCase() === tabName.toLowerCase()) {
       link.classList.remove("border-transparent", "text-gray-500");
+      link.classList.add("border-indigo-500", "text-indigo-600");
     }
   });
 }
@@ -452,6 +463,8 @@ function startUpload() {
     const formData = new FormData();
     formData.append("files[]", file);
 
+    let uploadsRemaining = Object.keys(selectedFiles).length;
+
     if (projectId) formData.append("project_id", projectId);
     if (galleryId) formData.append("gallery_id", galleryId);
 
@@ -486,7 +499,7 @@ function startUpload() {
         if (xhr.status === 200) {
           status.innerText = "Completed";
 
-          console.log("🚀 Response HTML:", xhr.responseText);
+          //console.log("🚀 Response HTML:", xhr.responseText);
           const sortable = document.querySelector(".sortable");
           if (sortable && xhr.responseText.trim() !== "") {
             sortable.insertAdjacentHTML("beforeend", xhr.responseText);
@@ -494,12 +507,19 @@ function startUpload() {
         } else {
           status.innerText = "Failed";
         }
+        // Decrement and check if all are done
+        uploadsRemaining--;
+        if (uploadsRemaining === 0) {
+          setTimeout(() => {
+            closeModal();
+          }, 500); // small delay feels smoother
+        }
       }
     };
 
-    for (let [key, value] of formData.entries()) {
-      console.log("🧾 FormData:", key, value);
-    }
+    //for (let [key, value] of formData.entries()) {
+    //  console.log("🧾 FormData:", key, value);
+    //}
     xhr.send(formData);
   });
 }

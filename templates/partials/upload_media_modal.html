@@ -5,7 +5,7 @@
 >
   <div
     id="mediaModalContent"
-    class="bg-white rounded-lg shadow-lg p-6 max-w-4xl w-full mx-4"
+    class="bg-white rounded-lg shadow-lg p-6 max-w-4xl w-full mx-4 h-full max-h-fit"
   >
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
@@ -21,7 +21,8 @@
     <!-- Tabs -->
     <div class="flex space-x-4 mb-4">
       <button
-        onclick="switchUploadTab('existing')"
+        onclick='switchUploadTab("existing")'
+        data-tab="existing"
         class='upload-tab-btn text-sm font-medium px-4 py-2  {{ if eq .ActiveTab "existing" }}border-b-2 border-amber-500 text-amber-600 {{ end }}'
       >
         Link Media
@@ -29,6 +30,7 @@
       {{ if ne .Context "settings" }}
       <button
         onclick="switchUploadTab('upload')"
+        data-tab="upload"
         class='upload-tab-btn text-sm font-medium px-4 py-2  {{ if eq .ActiveTab "upload" }} border-b-2 border-amber-500 text-amber-600 {{ end }}'
       >
         Upload Media
@@ -114,20 +116,28 @@
     <!-- Existing media grid -->
     <div
       id="upload-tab-existing"
-      class='upload-tab-section {{ if eq .ActiveTab "existing" }}block{{ else }}hidden{{ end }}'
+      class='upload-tab-section h-4/6 {{ if eq .ActiveTab "existing" }}block{{ else }}hidden{{ end }}'
     >
       <h3 class="text-sm font-semibold text-gray-700 mb-2">
         Select from existing media
       </h3>
 
-      <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+      <div class="h-full">
+      <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 h-5/6 overflow-y-auto">
         {{ if .ExistingMedia }} {{ range .ExistingMedia }}
         <div id="media-{{ .ID }}">
           <form
-            hx-post="/admin/media/attach"
-            hx-target=".sortable"
-            hx-swap="beforeend"
-            hx-on:afterRequest="document.getElementById('media-{{ .ID }}')?.remove()"
+            {{ if eq $.Context "settings" }}
+              hx-post="/admin/settings/set-about-image"
+              hx-target="#aboutImagePreview"
+              hx-swap="innerHTML"
+              hx-on:afterRequest="closeModal()"
+            {{ else }}
+              hx-post="/admin/media/attach"
+              hx-target=".sortable"
+              hx-swap="beforeend"
+              hx-on:afterRequest="document.getElementById('media-{{ .ID }}')?.remove()"
+            {{ end }}
           >
             <input type="hidden" name="media_id" value="{{ .ID }}" />
             {{ if $.GalleryID }}
@@ -150,11 +160,14 @@
         <p class="text-gray-400 col-span-full">No unlinked media available.</p>
         {{ end }}
       </div>
-
-      <!-- Include Pagination -->
-      {{ template "pagination" . }}
+       <!-- Include Pagination -->
+            {{ template "pagination" (dict "PaginationBaseURL" .PaginationBaseURL
+            "Page" .Page "Limit" .Limit "MediaCount" .MediaCount "TotalPages"
+            .TotalPages "HasNext" .HasNext "Target" "#upload-tab-existing" ) }}
+      </div>
+      
     </div>
-  </div>
+       </div>
 </div>
 
 {{ end }}

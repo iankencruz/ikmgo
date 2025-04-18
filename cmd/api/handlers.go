@@ -808,7 +808,7 @@ func (app *Application) AdminMedia(w http.ResponseWriter, r *http.Request) {
 		"HasNext":           hasNext,
 		"TotalPages":        totalPages,
 		"PaginationBaseURL": "/admin/media",
-		"PaginationTarget":  "#sortableGrid",
+		"Target":            "#sortable",
 		"ActiveLink":        "media",
 	}
 
@@ -1342,9 +1342,11 @@ func (app *Application) SetAboutMeImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	app.render(w, r, "partials/about_image_preview.html", map[string]interface{}{
+	data := map[string]interface{}{
 		"ImageURL": media.ThumbnailURL,
-	})
+	}
+	app.renderPartialHTMX(w, "partials/about_image_preview.html", data)
+
 }
 
 func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request) {
@@ -1359,7 +1361,7 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 			page = p
 		}
 	}
-	limit := 8
+	limit := 20
 	offset := page * limit
 
 	var existingMedia []*models.Media
@@ -1444,7 +1446,7 @@ func (app *Application) UploadMediaModal(w http.ResponseWriter, r *http.Request)
 		"TotalPages":        totalPages,
 		"MediaCount":        mediaCount,
 		"PaginationBaseURL": paginationBaseURL,
-		"PaginationTarget":  "#upload-tab-existing",
+		"Target":            "#upload-tab-existing",
 	})
 }
 

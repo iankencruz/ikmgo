@@ -1,6 +1,8 @@
 package main
 
 import (
+	ikmgo "ikm"
+	"io/fs"
 	"log"
 	"net/http"
 
@@ -16,10 +18,14 @@ func (app *Application) routes() http.Handler {
 	r.Use(middleware.CleanPath)
 
 	// Serve static files
-	fileServer := http.FileServer(http.Dir("./static"))
-	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
+	// ⚠️ wrap static FS correctly
+	staticFS, err := fs.Sub(ikmgo.EmbeddedFiles, "static")
+	if err != nil {
+		panic(err) // or log.Fatal
+	}
 
-	// Public Routes
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+
 	r.Get("/", app.Home)
 	r.Get("/about", app.About)
 	r.Get("/contact", app.Contact)

@@ -414,7 +414,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 			page = p
 		}
 	}
-	limit := 10
+	limit := 9
 	offset := page * limit
 
 	log.Printf("🧪 GalleryID: %d | Page: %d | Limit: %d | Offset: %d", id, page, limit, offset)
@@ -454,7 +454,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 		"TotalPages":        totalPages,
 		"HasNext":           hasNext,
 		"PaginationBaseURL": fmt.Sprintf("/admin/gallery/%d", id),
-		"PaginationTarget":  "#sortableGrid",
+		"Target":            "#sortableGrid",
 	}
 
 	// If HTMX, render just the sortable media grid block
@@ -631,7 +631,7 @@ func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) 
 			page = p
 		}
 	}
-	limit := 10
+	limit := 9
 	offset := page * limit
 
 	// 📦 Paginated Media
@@ -663,7 +663,7 @@ func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) 
 		"TotalPages":        totalPages,
 		"HasNext":           hasNext,
 		"PaginationBaseURL": fmt.Sprintf("/admin/project/edit/%d", id),
-		"PaginationTarget":  "#sortableGrid",
+		"Target":            "#sortableGrid",
 	}
 
 	// 🧠 HTMX: If HTMX, only re-render sortableGrid block
@@ -1493,7 +1493,12 @@ func (app *Application) ProjectInfoUpdate(w http.ResponseWriter, r *http.Request
 
 	// Return updated view
 	project, _ := app.ProjectModel.GetByID(id)
-	app.renderPartialHTMX(w, "partials/project_info_view.html", project)
+
+	data := map[string]interface{}{
+		"Project": project,
+	}
+
+	app.renderPartialHTMX(w, "partials/project_info_view.html", data)
 }
 
 func (app *Application) AttachMediaToItem(w http.ResponseWriter, r *http.Request) {

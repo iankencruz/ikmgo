@@ -34,6 +34,10 @@
     </div>
     {{ end }}
   </div>
-  {{ template "pagination" . }}
+
+       <!-- Include Pagination -->
+      {{ template "pagination" (dict "PaginationBaseURL" .PaginationBaseURL
+      "Page" .Page "Limit" .Limit "MediaCount" .MediaCount "TotalPages"
+      .TotalPages "HasNext" .HasNext "Target" "#sortableGrid" ) }}
 </div>
 {{ end }}

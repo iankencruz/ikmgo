@@ -18,13 +18,13 @@ function initLightbox() {
     modalImg.src = fullResUrl;
     modal.classList.remove("hidden");
 
-    console.log(`✅ Opening lightbox: ${fullResUrl}`);
+    //console.log(`✅ Opening lightbox: ${fullResUrl}`);
   }
 
   function closeLightbox() {
     modal.classList.add("hidden");
     modalImg.src = "";
-    console.log("✅ Lightbox closed.");
+    //console.log("✅ Lightbox closed.");
   }
 
   function showNext() {
@@ -52,7 +52,7 @@ function initLightbox() {
     if (e.target === modal) closeLightbox();
   });
 
-  console.log("✅ Lightbox bindings complete");
+  //console.log("✅ Lightbox bindings complete");
 }
 
 // 🧠 Run on initial page load

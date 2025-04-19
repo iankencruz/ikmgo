@@ -457,7 +457,7 @@ function startUpload() {
   const projectId = document.getElementById("upload-project-id")?.value;
   const galleryId = document.getElementById("upload-gallery-id")?.value;
 
-  console.log("projectId:", projectId, "galleryId:", galleryId);
+  //console.log("projectId:", projectId, "galleryId:", galleryId);
 
   Object.entries(selectedFiles).forEach(([fileId, file]) => {
     const formData = new FormData();

@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	ikmgo "ikm"
 	"ikm/models"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -29,17 +27,6 @@ type Application struct {
 	S3Client *minio.Client
 	S3Bucket string
 	S3Region string
-}
-
-func printEmbeddedFiles() {
-	fs.WalkDir(ikmgo.EmbeddedFiles, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			log.Println("⚠️ Error walking embedded FS:", err)
-			return nil
-		}
-		log.Println("📦 Embedded file:", path)
-		return nil
-	})
 }
 
 func main() {
@@ -141,7 +128,7 @@ func main() {
 	}
 
 	// DebugRoutes(app.routes())
-	printEmbeddedFiles()
+	// utils.PrintEmbeddedFiles()
 
 	// Start server
 	srv := &http.Server{

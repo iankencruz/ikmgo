@@ -86,7 +86,9 @@
 </div>
 
 <!-- Media Grid (HTMX wrapper) -->
-{{ template "admin_media_grid" . }}
+<div id="adminMediaGrid" hx-swap-oob="true">
+  {{ template "admin_media_grid" . }}
+</div>
 
 <!-- Cover Modal -->
 <div

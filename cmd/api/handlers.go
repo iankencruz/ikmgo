@@ -414,7 +414,7 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 			page = p
 		}
 	}
-	limit := 9
+	limit := 20
 	offset := page * limit
 
 	log.Printf("🧪 GalleryID: %d | Page: %d | Limit: %d | Offset: %d", id, page, limit, offset)
@@ -631,7 +631,7 @@ func (app *Application) EditProjectForm(w http.ResponseWriter, r *http.Request) 
 			page = p
 		}
 	}
-	limit := 9
+	limit := 20
 	offset := page * limit
 
 	// 📦 Paginated Media
@@ -1535,6 +1535,7 @@ func (app *Application) AttachMediaToItem(w http.ResponseWriter, r *http.Request
 			return
 		}
 
+		w.Header().Set("HX-Trigger", "refresh-admin-grid")
 		w.Header().Set("HX-Trigger", fmt.Sprintf("media-attached-%d", mediaID))
 		w.Header().Set("HX-Trigger-After-Settle", "show-toast")
 
@@ -1611,6 +1612,7 @@ func (app *Application) UnlinkMediaFromItem(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		w.Header().Set("HX-Trigger-After-Settle", "show-toast-unlinked")
+		w.Header().Set("HX-Trigger", "refresh-admin-grid")
 		w.WriteHeader(http.StatusOK)
 
 		return
@@ -1625,6 +1627,7 @@ func (app *Application) UnlinkMediaFromItem(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		w.Header().Set("HX-Trigger-After-Settle", "show-toast-unlinked")
+		w.Header().Set("HX-Trigger", "refresh-admin-grid")
 		w.WriteHeader(http.StatusOK)
 		return
 	}

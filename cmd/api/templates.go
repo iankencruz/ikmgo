@@ -67,58 +67,119 @@ var funcMap = template.FuncMap{
 
 }
 
-func LoadTemplates() error {
-	TemplateCache = make(map[string]*template.Template)
+//
+// func LoadTemplates() error {
+// 	TemplateCache = make(map[string]*template.Template)
+//
+// 	baseTemplates := map[string]string{
+// 		"public": "templates/base.html",
+// 		"admin":  "templates/admin_base.html",
+// 	}
+//
+// 	err := fs.WalkDir(ikmgo.EmbeddedFiles, "templates", func(path string, d fs.DirEntry, err error) error {
+// 		if err != nil || d.IsDir() {
+// 			return err
+// 		}
+//
+// 		// Only load top-level and admin/email files (skip partials here)
+// 		if strings.Contains(path, "/partials/") {
+// 			return nil
+// 		}
+//
+// 		var base string
+// 		if strings.Contains(path, "admin/") {
+// 			base = baseTemplates["admin"]
+// 		} else {
+// 			base = baseTemplates["public"]
+// 		}
+//
+// 		partials, _ := fs.Glob(ikmgo.EmbeddedFiles, "templates/partials/*.html")
+// 		files := append([]string{base, path}, partials...)
+//
+// 		tmpl, err := template.New(filepath.Base(path)).Funcs(funcMap).ParseFS(ikmgo.EmbeddedFiles, files...)
+// 		if err != nil {
+// 			log.Printf("❌ Error parsing template %s: %v", path, err)
+// 			return err
+// 		}
+//
+// 		templateName := strings.TrimPrefix(path, "templates/")
+// 		TemplateCache[templateName] = tmpl
+// 		return nil
+// 	})
+// 	if err != nil {
+// 		return err
+// 	}
 
+func LoadTemplates() error {
+	basePath := "templates/"
 	baseTemplates := map[string]string{
-		"public": "templates/base.html",
-		"admin":  "templates/admin_base.html",
+		"public": filepath.Join(basePath, "base.html"),
+		"admin":  filepath.Join(basePath, "admin_base.html"),
 	}
 
+	var templates []string
+	var partials []string
+
+	// Walk through the templates folder and gather all template files
 	err := fs.WalkDir(ikmgo.EmbeddedFiles, "templates", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
 
-		// Only load top-level and admin/email files (skip partials here)
 		if strings.Contains(path, "/partials/") {
-			return nil
-		}
-
-		var base string
-		if strings.Contains(path, "admin/") {
-			base = baseTemplates["admin"]
+			partials = append(partials, path)
 		} else {
-			base = baseTemplates["public"]
+			templates = append(templates, path)
 		}
-
-		partials, _ := fs.Glob(ikmgo.EmbeddedFiles, "templates/partials/*.html")
-		files := append([]string{base, path}, partials...)
-
-		tmpl, err := template.New(filepath.Base(path)).Funcs(funcMap).ParseFS(ikmgo.EmbeddedFiles, files...)
-		if err != nil {
-			log.Printf("❌ Error parsing template %s: %v", path, err)
-			return err
-		}
-
-		templateName := strings.TrimPrefix(path, "templates/")
-		TemplateCache[templateName] = tmpl
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	// Load partials individually
-	partials, _ := fs.Glob(ikmgo.EmbeddedFiles, "templates/partials/*.html")
-	for _, path := range partials {
-		tmpl, err := template.New(filepath.Base(path)).Funcs(funcMap).ParseFS(ikmgo.EmbeddedFiles, path)
+	// ✅ 1. Load full-page templates with base layout
+	for _, tmplPath := range templates {
+		var selectedBase string
+		if strings.Contains(tmplPath, "admin/") {
+			selectedBase = baseTemplates["admin"]
+		} else {
+			selectedBase = baseTemplates["public"]
+		}
+
+		files := append([]string{selectedBase, tmplPath}, partials...)
+		t, err := template.New(filepath.Base(tmplPath)).Funcs(funcMap).ParseFS(ikmgo.EmbeddedFiles, files...)
 		if err != nil {
-			log.Printf("❌ Error parsing partial %s: %v", path, err)
+			log.Printf("❌ Error loading template %s: %v", tmplPath, err)
+			return err
+		}
+
+		templateName := strings.TrimPrefix(tmplPath, basePath)
+		TemplateCache[templateName] = t
+		// logging templates
+		// log.Printf("✅ Cached template: %s", templateName)
+		// for _, tmpl := range t.Templates() {
+		// 	log.Printf("  └─ contains block: %s", tmpl.Name())
+		// }
+	}
+
+	// ✅ 2. Load partials as root templates (individually)
+	for _, partialPath := range partials {
+		files := append([]string{partialPath}, partials...) // ✅ include all partials
+
+		t, err := template.New(filepath.Base(partialPath)).Funcs(funcMap).ParseFiles(files...)
+		if err != nil {
+			log.Printf("❌ Error loading partial %s: %v", partialPath, err)
 			continue
 		}
-		name := strings.TrimPrefix(path, "templates/")
-		TemplateCache[name] = tmpl
+
+		partialName := strings.TrimPrefix(partialPath, basePath)
+		TemplateCache[partialName] = t
+
+		// Logging Partials
+		// log.Printf("✅ Cached partial: %s", partialName)
+		// for _, tmpl := range t.Templates() {
+		// 	log.Printf("  └─ contains block: %s", tmpl.Name())
+		// }
 	}
 
 	return nil

@@ -7,7 +7,7 @@
   {{ if .Gallery }}data-gallery="{{ .Gallery.ID }}"{{ end }}
   {{ if .Project }}data-project="{{ .Project.ID }}"{{ end }}
 >
-  <div class="sortable grid grid-cols-3 gap-4 mt-4">
+  <div class="sortable grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mt-4">
     {{ range .Media }}
     <div
       class="sortable-item border border-gray-300 p-2 rounded shadow-lg"

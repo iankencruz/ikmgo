@@ -531,3 +531,24 @@ function cancelUpload(fileId) {
     delete uploadControllers[fileId];
   }
 }
+
+document.addEventListener("htmx:afterOnLoad", function (evt) {
+  const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger");
+
+  if (trigger === "refresh-admin-grid") {
+    const grid = document.getElementById("sortableGrid");
+    const galleryID = grid?.dataset.gallery;
+    const projectID = grid?.dataset.project;
+
+    let url = "";
+    if (galleryID) {
+      url = `/admin/gallery/${galleryID}?partial=true`;
+    } else if (projectID) {
+      url = `/admin/project/edit/${projectID}?partial=true`;
+    }
+
+    if (url) {
+      htmx.ajax("GET", url, { target: "#adminMediaGrid", swap: "innerHTML" });
+    }
+  }
+});

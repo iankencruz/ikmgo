@@ -13,6 +13,8 @@ import (
 func (app *Application) routes() http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(SentryMiddleware)
+
 	//Logger Middleware
 	r.Use(middleware.Logger)
 	r.Use(middleware.CleanPath)

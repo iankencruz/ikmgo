@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
@@ -45,6 +46,16 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	// Sentry
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn:              os.Getenv("SENTRY_DSN"),
+		TracesSampleRate: 1.0,
+	})
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
+	defer sentry.Flush(2 * time.Second)
 
 	// S3 configuration
 	// 1) Gather S3 config from environment

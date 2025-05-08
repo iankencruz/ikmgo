@@ -79,30 +79,56 @@ func (app *Application) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 // Login Handler (GET + POST)
+
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method == "GET" {
-		data := map[string]interface{}{
+		app.render(w, r, "login.html", map[string]interface{}{
 			"Title":       "Login",
-			"HideSidebar": true, // Prevents the sidebar from rendering
-		}
-		app.render(w, r, "login.html", data)
+			"HideSidebar": true,
+		})
 		return
 	}
 
-	// Process login form submission
+	// Parse form values
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Form error", http.StatusBadRequest)
+		return
+	}
+
+	form := utils.NewForm(r.PostForm)
+	form.Required("email", "password")
+
+	if !form.Valid() {
+		app.render(w, r, "login.html", map[string]interface{}{
+			"Title":       "Login",
+			"HideSidebar": true,
+			"Form":        form,
+		})
+		http.Error(w, "Invalid login", http.StatusUnauthorized)
+		fmt.Printf("❌ Error authenticating user: %v", form.NonFieldErrors)
+		return
+	}
+
+	// Authenticate user
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
 	user, err := app.UserModel.Authenticate(email, password)
 	if err != nil {
+		form.NonFieldErrors = append(form.NonFieldErrors, "Invalid email or password")
+		app.render(w, r, "login.html", map[string]interface{}{
+			"Title":       "Login",
+			"HideSidebar": true,
+			"Form":        form,
+		})
 		http.Error(w, "Invalid login", http.StatusUnauthorized)
+		fmt.Printf("❌ Error authenticating user: %v", form.NonFieldErrors)
 		return
 	}
 
-	// Store session using secure cookies
 	SetSession(user.ID, w)
-
-	// Redirect to admin dashboard
 	http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
 }
 

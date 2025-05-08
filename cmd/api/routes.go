@@ -1,8 +1,6 @@
 package main
 
 import (
-	ikmgo "ikm"
-	"io/fs"
 	"log"
 	"net/http"
 
@@ -13,20 +11,17 @@ import (
 func (app *Application) routes() http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(SentryMiddleware)
+	r.Use(app.SentryMiddleware)
 
 	//Logger Middleware
+	r.Use(app.SecureHeaderMiddleware)
 	r.Use(middleware.Logger)
 	r.Use(middleware.CleanPath)
 
 	// Serve static files
-	// ⚠️ wrap static FS correctly
-	staticFS, err := fs.Sub(ikmgo.EmbeddedFiles, "static")
-	if err != nil {
-		panic(err) // or log.Fatal
-	}
 
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+	fileServer := http.FileServer(http.Dir("./static"))
+	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
 
 	r.Get("/", app.Home)
 	r.Get("/about", app.About)
@@ -48,7 +43,7 @@ func (app *Application) routes() http.Handler {
 
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(app.AuthMiddleware)
+		// r.Use(app.AuthMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin/dashboard", 301)

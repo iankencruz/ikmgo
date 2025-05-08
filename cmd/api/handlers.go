@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"ikm/models"
+	"ikm/templates/admin"
+	"ikm/templates/layouts"
 	"ikm/utils"
 	"io"
 	"log"
@@ -443,28 +445,29 @@ func (app *Application) EditGalleryForm(w http.ResponseWriter, r *http.Request) 
 
 	log.Printf("🧪 Page: %d | Offset: %d | Media: %d | HasNext: %v", page, offset, len(media), hasNext)
 
-	data := map[string]interface{}{
-		"Title":             "Edit Gallery",
-		"Media":             media,
-		"MediaCount":        gallery.MediaCount,
-		"GalleryID":         id,
-		"Gallery":           gallery,
-		"Page":              page,
-		"Limit":             limit,
-		"TotalPages":        totalPages,
-		"HasNext":           hasNext,
-		"PaginationBaseURL": fmt.Sprintf("/admin/gallery/%d", id),
-		"Target":            "#sortableGrid",
-	}
-
 	// If HTMX, render just the sortable media grid block
 	if utils.IsHTMX(r) {
-		app.renderPartialHTMX(w, "admin_media_grid", data)
+		component := admin.AdminMediaGrid(media, page, totalPages, hasNext, fmt.Sprintf("/admin/gallery/%d", id))
+		if err := component.Render(r.Context(), w); err != nil {
+			log.Fatalf("❌ Failed to render HTMX component: %v", err)
+		}
 		return
 	}
 
 	// Full page render
-	app.render(w, r, "admin/edit_gallery.html", data)
+	app.RenderTempl(w, r, layouts.Admin, "Edit Gallery", admin.EditGallery(models.EditGalleryPageData{
+		Gallery:           gallery,
+		Media:             media,
+		Page:              page,
+		Limit:             limit,
+		MediaCount:        gallery.MediaCount,
+		TotalPages:        totalPages,
+		HasNext:           hasNext,
+		PaginationBaseURL: fmt.Sprintf("/admin/gallery/%d", id),
+		Target:            "#sortableGrid",
+		ActiveLink:        "galleries",
+	}))
+
 }
 
 // Update Gallery Title

@@ -1,0 +1,41 @@
+// templates/layouts/admin.templ
+package layouts
+
+import (
+	"ikm/models"
+	"ikm/templates/components"
+)
+
+// Define the context key type.
+type contextKey string
+
+// Create a context key for the theme.
+var themeContextKey contextKey = "theme"
+
+var user *models.User
+
+templ Admin(title string, content templ.Component) {
+	if u := ctx.Value("user"); u != nil {
+		user, _ = u.(*models.User)
+	}
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<title>{ title }</title>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<link href="/static/css/tailwind.css" rel="stylesheet"/>
+			<script src="/static/js/htmx.min.js"></script>
+			<script src="/static/js/main.js"></script>
+		</head>
+		<body class="bg-gray-50 text-gray-900">
+			<div class="min-h-screen flex">
+				<!-- Sidebar -->
+				@components.AdminSidebar(user)
+				<!-- Main content -->
+				<main class="flex-1 p-6">
+					@content
+				</main>
+			</div>
+		</body>
+	</html>
+}

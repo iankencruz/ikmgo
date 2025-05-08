@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	ikmgo "ikm"
@@ -10,6 +11,8 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	"github.com/a-h/templ"
 )
 
 var TemplateCache = make(map[string]*template.Template)
@@ -185,45 +188,37 @@ func LoadTemplates() error {
 	return nil
 }
 
-func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl string, data map[string]interface{}) {
-	t, ok := TemplateCache[tmpl]
-	if !ok {
-		log.Printf("❌ Template not found in cache: %s", tmpl)
-		http.Error(w, "Template not found", http.StatusInternalServerError)
-		return
-	}
+func (app *Application) RenderTempl(
+	w http.ResponseWriter,
+	r *http.Request,
+	layout func(title string, content templ.Component) templ.Component,
+	title string,
+	content templ.Component,
+) {
+	ctx := r.Context()
 
-	if data == nil {
-		data = make(map[string]interface{})
-	}
-
-	userID, _ := GetSession(r)
-	if userID > 0 {
-		user, err := app.UserModel.GetUserByID(userID)
-		if err == nil {
-			data["User"] = user
+	// Inject user
+	if userID, _ := GetSession(r); userID > 0 {
+		if user, err := app.UserModel.GetUserByID(userID); err == nil {
+			ctx = context.WithValue(ctx, "user", user)
 		}
 	}
 
+	// Inject settings
 	if app.SettingsModel != nil {
-		settings, err := app.SettingsModel.GetAll()
-		if err == nil {
-			data["Settings"] = settings
+		if settings, err := app.SettingsModel.GetAll(); err == nil {
+			ctx = context.WithValue(ctx, "settings", settings)
 		}
 	}
 
-	// ✅ Inject request path
-	data["CurrentPath"] = r.URL.Path
+	// Inject path
+	ctx = context.WithValue(ctx, "currentPath", r.URL.Path)
 
-	layout := "base"
-	if strings.Contains(tmpl, "admin/") {
-		layout = "base_admin"
-	}
-
-	err := t.ExecuteTemplate(w, layout, data)
+	// ✅ Compose and render
+	err := layout(title, content).Render(ctx, w)
 	if err != nil {
-		log.Printf("❌ Template render error for %s: %v", tmpl, err)
-		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		log.Printf("❌ RenderTempl error: %v", err)
+		http.Error(w, "Render error", http.StatusInternalServerError)
 	}
 }
 
@@ -304,5 +299,47 @@ func (app *Application) renderPartialHTMX(w io.Writer, block string, data interf
 	log.Printf("❌ HTMX partial not found: %s", block)
 	if rw, ok := w.(http.ResponseWriter); ok {
 		http.Error(rw, "Partial not found", http.StatusInternalServerError)
+	}
+}
+
+func (app *Application) render(w http.ResponseWriter, r *http.Request, tmpl string, data map[string]interface{}) {
+	t, ok := TemplateCache[tmpl]
+	if !ok {
+		log.Printf("❌ Template not found in cache: %s", tmpl)
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	userID, _ := GetSession(r)
+	if userID > 0 {
+		user, err := app.UserModel.GetUserByID(userID)
+		if err == nil {
+			data["User"] = user
+		}
+	}
+
+	if app.SettingsModel != nil {
+		settings, err := app.SettingsModel.GetAll()
+		if err == nil {
+			data["Settings"] = settings
+		}
+	}
+
+	// ✅ Inject request path
+	data["CurrentPath"] = r.URL.Path
+
+	layout := "base"
+	if strings.Contains(tmpl, "admin/") {
+		layout = "base_admin"
+	}
+
+	err := t.ExecuteTemplate(w, layout, data)
+	if err != nil {
+		log.Printf("❌ Template render error for %s: %v", tmpl, err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 }

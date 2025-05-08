@@ -1,0 +1,34 @@
+package admin
+
+import (
+"fmt"
+"ikm/models"
+)
+
+templ AdminMediaGrid(media []*models.Media, page int, totalPages int, hasNext bool, baseURL string) {
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sortable" id="sortableGrid">
+	for _, m := range media {
+	<div class="sortable-item" data-id={ m.ID }>
+		<img src={ m.ThumbnailURL } alt={ m.FileName } class="w-full h-auto rounded shadow" />
+	</div>
+	}
+</div>
+if page > 0 || hasNext {
+<div class="flex justify-between items-center mt-4">
+	if page > 0 {
+	<button hx-get={ fmt.Sprintf(" %s?page=%d", baseURL, page-1) } hx-target="#sortableGrid" hx-swap="outerHTML"
+		class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+		← Previous
+	</button>
+	} else {
+	<span></span>
+	}
+	if hasNext {
+	<button hx-get={ fmt.Sprintf(" %s?page=%d", baseURL, page+1) } hx-target="#sortableGrid" hx-swap="outerHTML"
+		class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+		Next →
+	</button>
+	}
+</div>
+}
+}

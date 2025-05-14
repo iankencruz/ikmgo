@@ -34,10 +34,11 @@ func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]interface{}{
-		"Title":      "Home",
-		"Gallery":    gallery,
-		"Media":      media,
-		"ActiveLink": "home",
+		"Title":       "Home",
+		"Gallery":     gallery,
+		"Media":       media,
+		"ActiveLink":  "home",
+		"Description": gallery.Description,
 	}
 
 	app.render(w, r, "index.html", data)
@@ -327,11 +328,14 @@ func (app *Application) PublicProjectsList(w http.ResponseWriter, r *http.Reques
 
 	log.Printf("Project Publics: %v", projects)
 
+	description := "Browse a curated selection of creative projects focused on commercial branding, fashion campaigns, and portrait storytelling. Based in Canberra, each project blends artistic direction with strategic visual identity—crafted for brands, designers, and individuals seeking bold, polished imagery."
+
 	data := map[string]interface{}{
 		"Title":        "Projects",
 		"Projects":     projects,
 		"CanonicalURL": utils.BuildCanonicalURL(r, "/projects"),
 		"ActiveLink":   "projects",
+		"Description":  description,
 	}
 
 	app.render(w, r, "projects.html", data)
@@ -992,19 +996,31 @@ func (app *Application) UploadMedia(w http.ResponseWriter, r *http.Request) {
 
 // About Page Handler
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
+	settings, err := app.SettingsModel.GetAll()
+	if err != nil {
+		log.Printf("❌ Failed to load settings: %v", err)
+		http.Error(w, "Unable to load About page", http.StatusInternalServerError)
+		return
+	}
+
+	description := settings["about_me_description"]
+
 	app.render(w, r, "about.html", map[string]interface{}{
-		"Title":      "About Me",
-		"ActiveLink": "about",
+		"Title":       "About Me",
+		"ActiveLink":  "about",
+		"Description": description,
 	})
 }
 
 // Contact Handler (GET + POST)
 func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
+	pageDescription := "Get in touch for photography bookings, collaborations, or general enquiries. I'm based in Canberra and available for local and destination shoots."
 	// 1. Handle GET request - show contact form
 	if r.Method == http.MethodGet {
 		app.render(w, r, "contact.html", map[string]interface{}{
-			"Title":      "Contact",
-			"ActiveLink": "contact",
+			"Title":       "Contact",
+			"ActiveLink":  "contact",
+			"Description": pageDescription,
 		})
 		return
 	}
@@ -1085,6 +1101,8 @@ func (app *Application) PublicGalleriesList(w http.ResponseWriter, r *http.Reque
 	galleries, err := app.GalleryModel.GetAllPublic()
 	log.Printf("Galleries: %v", galleries)
 
+	description := "Explore bold and expressive portrait, branding, and fashion photography by a Canberra-based photographer. Each gallery showcases carefully curated visual stories designed to elevate personal identities and brand presence through powerful, intentional imagery."
+
 	if err != nil {
 		http.Error(w, "Error fetching galleries", http.StatusInternalServerError)
 		return
@@ -1093,6 +1111,7 @@ func (app *Application) PublicGalleriesList(w http.ResponseWriter, r *http.Reque
 		"Title":        "Galleries",
 		"Galleries":    galleries,
 		"CanonicalURL": utils.BuildCanonicalURL(r, "/galleries"),
+		"Description":  description,
 		"ActiveLink":   "galleries",
 	})
 }

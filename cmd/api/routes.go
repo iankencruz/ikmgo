@@ -17,7 +17,8 @@ func (app *Application) routes() http.Handler {
 
 	//Logger Middleware
 	r.Use(middleware.Logger)
-	r.Use(middleware.CleanPath)
+	r.Use(middleware.Recoverer)
+	// r.Use(middleware.CleanPath)
 
 	// Serve static files
 	// ⚠️ wrap static FS correctly

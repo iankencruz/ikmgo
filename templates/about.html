@@ -1,13 +1,21 @@
 {{define "meta"}}
 <title>{{ index .Settings "site_title" }} | {{ .Title}}</title>
-<meta name="description" content="{{ .Description }}" />
+<meta
+  name="description"
+  content='{{ index .Settings
+        "about_description" }}'
+/>
 {{ if .CanonicalURL }}
 <link rel="canonical" href="{{ .CanonicalURL }}" />
 {{ end }}
 
 <!-- Open Graph -->
 <meta property="og:title" content="{{ .Title }}" />
-<meta property="og:description" content="{{ .Description }}" />
+<meta
+  property="og:description"
+  content='{{ index .Settings
+        "about_description" }}'
+/>
 {{ if .OGImage }}
 <meta property="og:image" content="{{ .OGImage }}" />
 {{ end }}
@@ -17,7 +25,11 @@
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="{{ .Title }}" />
-<meta name="twitter:description" content="{{ .Description }}" />
+<meta
+  name="twitter:description"
+  content='{{ index .Settings
+        "about_description" }}'
+/>
 {{ if .OGImage }}
 <meta name="twitter:image" content="{{ .OGImage }}" />
 {{ end }}
@@ -29,14 +41,24 @@
 {{ define "content" }}
 <section class="py-24 relative">
   <div class="w-full max-w-7xl px-4 md:px-5 lg:px-5 mx-auto">
-    <div class="w-full flex-col justify-center items-start lg:gap-12 gap-10 inline-flex">
-      <div class="flex-col justify-center items-center lg:gap-12 gap-10 inline-flex w-full lg:flex-row ">
-
-
-        <div class="w-full justify-start items-end xl:gap-12 gap-10 grid grid-cols-1">
-          <div class="w-full flex-col justify-center items-start gap-5 inline-flex">
-            <div class=" items-start lg:gap-12 gap-10 inline-flex w-full lg:flex-row-reverse flex-col justify-end">
-              <h2 class="text-black text-4xl font-bold font-manrope leading-normal ">
+    <div
+      class="w-full flex-col justify-center items-start lg:gap-12 gap-10 inline-flex"
+    >
+      <div
+        class="flex-col justify-center items-center lg:gap-12 gap-10 inline-flex w-full lg:flex-row"
+      >
+        <div
+          class="w-full justify-start items-end xl:gap-12 gap-10 grid grid-cols-1"
+        >
+          <div
+            class="w-full flex-col justify-center items-start gap-5 inline-flex"
+          >
+            <div
+              class="items-start lg:gap-12 gap-10 inline-flex w-full lg:flex-row-reverse flex-col justify-end"
+            >
+              <h2
+                class="text-black text-4xl font-bold font-manrope leading-normal"
+              >
                 Photographer / Creative
               </h2>
             </div>
@@ -49,7 +71,6 @@
         </div>
         <!-- prettier-ignore -->
         <img src='{{ index .Settings "about_me_image" }}' alt="About Me Image" class="lg:pr-8" />
-
       </div>
     </div>
   </div>

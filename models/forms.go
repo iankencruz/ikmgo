@@ -6,5 +6,5 @@ type ContactForm struct {
 	Email          string `validate:"required,email"`
 	Subject        string `validate:"required,max=200"`
 	Message        string `validate:"required"`
-	RecaptchaToken string `validate:"required"`
+	RecaptchaToken string `form:"g-recaptcha-response" validate:"required"`
 }

@@ -35,6 +35,11 @@
       <!-- Your content goes here -->
       {{ template "content" . }}
     </main>
+
+    <div
+      id="toastContainer"
+      class="fixed top-4 right-4 z-[1000] space-y-2"
+    ></div>
     <!-- JavaScript for  Gallery Lightbox -->
     <script src="/static/js/gallery.js" defer></script>
     <script src="/static/js/htmx.min.js" defer></script>

@@ -1041,15 +1041,16 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 		Message:        r.FormValue("message"),
 		RecaptchaToken: r.FormValue("g-recaptcha-response"),
 	}
-	log.Printf("🔍 Form submission: %+v", form)
+	// log.Printf("🔍 Form submission: %+v", form)
 
 	// 4. Validate form fields
+	// On validation error
 	if err := utils.ValidateStruct(&form); err != nil {
 		log.Printf("❌ Contact form validation failed: %v", err)
-		app.render(w, r, "contact.html", map[string]interface{}{
-			"Title":  "Contact",
-			"Errors": err,
+		w.WriteHeader(http.StatusBadRequest)
+		app.renderPartialHTMX(w, "partials/contact_form.html", map[string]interface{}{
 			"Form":   form,
+			"Errors": err,
 		})
 		return
 	}
@@ -1069,7 +1070,7 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("Insert success. starting SendEmail method")
 
-	log.Printf("SMTP_USER: %s | CONTACT_EMAIL: %s", os.Getenv("SMTP_USER"), os.Getenv("CONTACT_EMAIL"))
+	// log.Printf("SMTP_USER: %s | CONTACT_EMAIL: %s", os.Getenv("SMTP_USER"), os.Getenv("CONTACT_EMAIL"))
 
 	// 7. Send email with Gomail via utils.SendEmail
 	err := utils.SendEmail(
@@ -1090,11 +1091,9 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 
 	// app.render(w, r, "partials/contact_success_modal.html", nil) // ✅ Correct
 
-	app.renderPartialHTMX(w, "partials/alert_toast.html", map[string]any{
-		"Heading":  "Message Sent!",
-		"Subtitle": "Your message has been submitted successfully.",
-		"Variant":  "success", // options: success, error, warning, info
-	})
+	w.Header().Set("HX-Trigger", "form-submitted")
+	w.Header().Set("HX-Trigger-After-Settle", "show-toast-contact")
+	w.WriteHeader(http.StatusOK)
 
 }
 

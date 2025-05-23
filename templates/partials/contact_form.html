@@ -1,0 +1,79 @@
+{{ define "partials/contact_form.html" }}
+<div id="contact-form-container">
+  <form
+    id="contact-form"
+    hx-post="/contact"
+    hx-target="#contact-form-container"
+    hx-swap="outerHTML"
+    method="POST"
+  >
+    <div>
+      <label class="block text-sm font-medium text-gray-700">First Name</label>
+      <input
+        type="text"
+        name="first_name"
+        value="{{ .Form.FirstName }}"
+        required
+        class="border rounded w-full p-2"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Last Name</label>
+      <input
+        type="text"
+        name="last_name"
+        value="{{ .Form.LastName }}"
+        required
+        class="border rounded w-full p-2"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Email</label>
+      <input
+        type="email"
+        name="email"
+        value="{{ .Form.Email }}"
+        required
+        class="border rounded w-full p-2"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Subject</label>
+      <input
+        type="text"
+        name="subject"
+        value="{{ .Form.Subject }}"
+        required
+        class="border rounded w-full p-2"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Message</label>
+      <textarea name="message" required class="border rounded w-full p-2 h-32">
+{{ .Form.Message }}</textarea
+      >
+    </div>
+
+    {{ if .Errors }}
+    <div class="text-red-600 text-sm">
+      <ul>
+        {{ range $field, $err := .Errors }}
+        <li><strong>{{ $field }}:</strong> {{ $err }}</li>
+        {{ end }}
+      </ul>
+    </div>
+    {{ end }}
+
+    <button
+      type="submit"
+      class="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+    >
+      Send Message
+    </button>
+  </form>
+</div>
+{{ end }}

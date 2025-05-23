@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
 if (window.Sortable && typeof Sortable.create === "function") {
   const originalCreate = Sortable.create;
 
-  Sortable.create = function (el, options) {
+  Sortable.create = function(el, options) {
     if (!el || !(el instanceof HTMLElement)) {
       console.warn("⛔ Sortable.create called with invalid element:", el);
       console.trace(); // shows where it was triggered
@@ -50,7 +50,7 @@ function initSortableGrid() {
       handle: ".sortable-item",
       draggable: ".sortable-item",
 
-      onEnd: function (evt) {
+      onEnd: function(evt) {
         const ids = [...grid.querySelectorAll(".sortable-item")].map((el) =>
           Number(el.dataset.id),
         );
@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==============================
 // 🪄 Upload Modal + Tabs + Toast
 // ==============================
-window.closeModal = function () {
+window.closeModal = function() {
   const modal = document.querySelector("#mediaModalContainer .fixed");
   if (modal) {
     modal.classList.add("opacity-0");
@@ -140,7 +140,7 @@ window.closeModal = function () {
   }
 };
 
-document.addEventListener("click", function (event) {
+document.addEventListener("click", function(event) {
   const modal = document.querySelector("#mediaModalContainer .fixed");
   const content = document.getElementById("mediaModalContent");
   if (!modal || !content || modal.classList.contains("hidden")) return;
@@ -152,7 +152,7 @@ document.addEventListener("click", function (event) {
   }
 });
 
-window.switchUploadTab = function (tab, event = null) {
+window.switchUploadTab = function(tab, event = null) {
   if (event) event.preventDefault();
 
   // Hide all tab content sections
@@ -176,7 +176,7 @@ window.switchUploadTab = function (tab, event = null) {
 };
 
 // 🧼 Clean up modal after linking media
-document.addEventListener("htmx:afterOnLoad", function (evt) {
+document.addEventListener("htmx:afterOnLoad", function(evt) {
   const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger");
   if (trigger?.startsWith("media-attached-")) {
     const mediaID = trigger.replace("media-attached-", "");
@@ -196,7 +196,8 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
 });
 
 // 🍞 Toast trigger handler
-document.addEventListener("htmx:afterOnLoad", function (evt) {
+
+document.addEventListener("htmx:afterOnLoad", function(evt) {
   const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger-After-Settle");
   if (!trigger) return;
 
@@ -205,11 +206,19 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
       variant: "success",
       heading: "Media Linked",
       subtitle: "Successfully attached to gallery or project",
+      path: "/admin/toast", // admin context
     },
     "show-toast-unlinked": {
       variant: "warning",
       heading: "Media Unlinked",
       subtitle: "This media was removed from the gallery or project",
+      path: "/admin/toast",
+    },
+    "show-toast-contact": {
+      variant: "success",
+      heading: "Message Sent!",
+      subtitle: "Your message has been submitted successfully.",
+      path: "/toast", // public context
     },
   };
 
@@ -217,32 +226,30 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
   if (!toast) return;
 
   fetch(
-    `/admin/toast?variant=${toast.variant}&heading=${encodeURIComponent(
-      toast.heading,
-    )}&subtitle=${encodeURIComponent(toast.subtitle)}`,
+    `${toast.path}?variant=${toast.variant}&heading=${encodeURIComponent(
+      toast.heading
+    )}&subtitle=${encodeURIComponent(toast.subtitle)}`
   )
     .then((res) => res.text())
     .then((html) => {
       const container = document.getElementById("toastContainer");
       if (!container) return;
 
-      // 💥 Remove any existing toast before adding a new one
-      container.innerHTML = "";
-
+      container.innerHTML = ""; // remove any existing toasts
       container.insertAdjacentHTML("beforeend", html);
 
       const el = container.querySelector(".toast-fade");
       if (!el) return;
 
-      // ✨ Animate in: fade + slide + bounce
+      // Animate in
       setTimeout(() => {
         el.classList.add("opacity-100", "translate-y-0", "scale-100");
-      }, 50); // short delay to allow paint
+      }, 50);
 
       const fadeDuration = 700;
       const displayTime = parseInt(el.dataset.timeout) || 7000;
 
-      // Fade out after display time
+      // Auto-dismiss
       setTimeout(() => {
         el.classList.remove("opacity-100");
         el.classList.add("opacity-0");
@@ -250,7 +257,6 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
       }, displayTime);
     });
 });
-
 // =====================
 // 🗂️ Tab Switching
 // =====================
@@ -309,7 +315,7 @@ function toggleUserMenu(scope) {
   });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function() {
   const titleInput = document.getElementById("title");
   const slugInput = document.getElementById("slug");
 
@@ -426,7 +432,7 @@ function previewFiles(event) {
     selectedFiles[fileId] = file;
 
     const reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = function(e) {
       const block = document.createElement("div");
       block.id = `file-${fileId}`;
       block.className = "relative border rounded-lg p-2 shadow-sm bg-white";
@@ -483,7 +489,7 @@ function startUpload() {
     xhr.open("POST", "/admin/media/upload", true);
 
     // Update progress bar
-    xhr.upload.onprogress = function (e) {
+    xhr.upload.onprogress = function(e) {
       if (e.lengthComputable) {
         const percent = (e.loaded / e.total) * 100;
         const progressBar = document.getElementById(`progress-${fileId}`);
@@ -494,7 +500,7 @@ function startUpload() {
     };
 
     // On upload complete
-    xhr.onload = function () {
+    xhr.onload = function() {
       if (status) {
         if (xhr.status === 200) {
           status.innerText = "Completed";
@@ -532,7 +538,7 @@ function cancelUpload(fileId) {
   }
 }
 
-document.addEventListener("htmx:afterOnLoad", function (evt) {
+document.addEventListener("htmx:afterOnLoad", function(evt) {
   const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger");
 
   if (trigger === "refresh-admin-grid") {
@@ -552,3 +558,23 @@ document.addEventListener("htmx:afterOnLoad", function (evt) {
     }
   }
 });
+
+
+// Clear contct form after submit
+
+document.addEventListener("htmx:afterOnLoad", function(evt) {
+  const trigger = evt.detail.xhr.getResponseHeader("HX-Trigger");
+
+  if (trigger === "form-submitted") {
+    const form = document.getElementById("contact-form");
+    if (form) {
+      form.reset();
+    }
+  }
+});
+
+document.addEventListener("htmx:afterSwap", function(evt) {
+  const firstError = document.querySelector(".field-error input, .field-error textarea");
+  if (firstError) firstError.focus();
+});
+

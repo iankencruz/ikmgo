@@ -14,8 +14,7 @@ import (
 // SendEmail uses GoMail to send an HTML email using a provided template.
 func SendEmail(from, to, subject, tmplPath string, data interface{}) error {
 
-	// ✅ 1. Parse the HTML template from embedded FS
-	t, err := template.New("email").ParseFS(ikmgo.EmbeddedFiles, tmplPath)
+	t, err := template.ParseFS(ikmgo.EmbeddedFiles, "templates/emails/contact_email.html")
 	if err != nil {
 		return fmt.Errorf("failed to parse email template: %w", err)
 	}

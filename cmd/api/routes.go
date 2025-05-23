@@ -47,6 +47,8 @@ func (app *Application) routes() http.Handler {
 	r.Get("/contact", app.Contact)
 	r.Post("/contact", app.Contact)
 
+	r.Get("/toast", app.Toast)
+
 	// Admin Routes (Protected)
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(app.AuthMiddleware)

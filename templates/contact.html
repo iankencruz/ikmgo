@@ -36,7 +36,7 @@
   <h2 class="text-3xl font-extrabold text-gray-900">Contact</h2>
 
   <div class="mt-8 w-full flex flex-col items-center">
-    <div class="w-full bg-white ">
+    <div id="contact-form-container" class="w-full bg-white ">
       <!-- 
          1) No action/method; we rely on HTMX.
          2) hx-post => where to send data
@@ -45,9 +45,9 @@
       <form
         id="contact-form"
         hx-post="/contact"
-        hx-target="body"
-        hx-swap="afterbegin"
+        hx-swap="none"
         hx-trigger="verified"
+        method="POST"
       >
         <fieldset>
           <legend class="block text-left text-sm font-medium text-gray-700">

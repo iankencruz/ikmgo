@@ -4,6 +4,8 @@ bin/
 tmp
 tmp/*
 
+data/
+data/*
 
 
 # environment variables

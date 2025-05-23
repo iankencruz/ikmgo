@@ -1069,13 +1069,15 @@ func (app *Application) Contact(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("Insert success. starting SendEmail method")
 
+	log.Printf("SMTP_USER: %s | CONTACT_EMAIL: %s", os.Getenv("SMTP_USER"), os.Getenv("CONTACT_EMAIL"))
+
 	// 7. Send email with Gomail via utils.SendEmail
 	err := utils.SendEmail(
-		os.Getenv("CONTACT_EMAIL"),              // From
-		os.Getenv("CONTACT_EMAIL"),              // To
-		form.Subject,                            // Subject
-		"./templates/emails/contact_email.html", // Template path
-		form,                                    // Data for template
+		os.Getenv("CONTACT_EMAIL"),            // From
+		os.Getenv("CONTACT_EMAIL"),            // To
+		form.Subject,                          // Subject
+		"templates/emails/contact_email.html", // Template path
+		form,                                  // Data for template
 	)
 	if err != nil {
 		log.Printf("❌ Email sending failed: %v", err)

@@ -166,7 +166,7 @@ func LoadTemplates() error {
 	for _, partialPath := range partials {
 		files := append([]string{partialPath}, partials...) // ✅ include all partials
 
-		t, err := template.New(filepath.Base(partialPath)).Funcs(funcMap).ParseFiles(files...)
+		t, err := template.New(filepath.Base(partialPath)).Funcs(funcMap).ParseFS(ikmgo.EmbeddedFiles, files...)
 		if err != nil {
 			log.Printf("❌ Error loading partial %s: %v", partialPath, err)
 			continue
